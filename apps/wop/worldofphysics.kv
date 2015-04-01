@@ -1,0 +1,119 @@
+#:kivy 1.0.9
+
+
+<DrawRawPhysicsWidget>:
+    size_hint: (1, 1)
+    BoxLayout:
+        size_hint: (1, 1)
+        orientation: "horizontal"       
+
+
+<SelectGooBubble>:
+    size_hint: (None, None)
+    size: (160, 120)
+    pos_hint: {'center_x': 0, 'y':0}
+    BubbleButton:
+        text: 'Cut'
+    BubbleButton:
+        text: 'Copy'
+    BubbleButton:
+        text: 'Paste'
+
+<DrawPhysicsWidget>:
+    viewer:viewer
+    zoomOutButton:zoomOutButton
+    zoomInButton:zoomInButton
+
+    BoxLayout:
+        opacity:1
+        size_hint: (1, 1)
+        orientation: "horizontal"
+        BoxLayout:
+            size_hint: (0.15,1)
+            orientation: "vertical"
+            TabbedPanel:
+                tab_pos: "left_mid"
+                do_default_tab: False
+                TabbedPanelItem:
+                    text: "Goos"
+                    default_tab:True
+                    BoxLayout:
+                        orientation: "vertical"
+                        Button:
+                            id: blackGooButton
+                            text: "Hello"
+                            Image:
+                                size: (self.parent.size[0], self.parent.size[1])
+                                y: self.parent.y
+                                x: self.parent.x
+                                source: 'res/black_goo_128.png'
+                        Button:
+                            id: greenGooButton
+                            text: "Hello"
+                            Image:
+                                size: (self.parent.size[0], self.parent.size[1])
+                                y: self.parent.y #+ self.parent.height - 30
+                                x: self.parent.x
+                                source: 'res/green_goo_128.png'
+                        Button:
+                            id: redGooButton
+                            text: "Hello"
+                            Image:
+                                size: (self.parent.size[0], self.parent.size[1])
+                                y: self.parent.y #+ self.parent.height - 30
+                                x: self.parent.x
+                                source: 'res/red_goo_128.png'
+                        Button:
+                            id: pinkGooButton
+                            text: "Hello"
+                            Image:
+                                size: (self.parent.size[0], self.parent.size[1])
+                                y: self.parent.y #+ self.parent.height - 30
+                                x: self.parent.x
+                                source: 'res/pink_goo_128.png'
+                TabbedPanelItem:
+                    text: "r and p"
+                    BoxLayout:
+                        orientation: "vertical"
+                        Button:
+                            id: redGooButton
+                            text: "Hello"
+
+                TabbedPanelItem:
+                    text: "Fake"
+                TabbedPanelItem:
+                    text: "Fake"
+                TabbedPanelItem:
+                    text: "Fake"
+                TabbedPanelItem:
+                    text: "Fake"
+                TabbedPanelItem:
+                    text: "Fake"
+                TabbedPanelItem:
+                    text: "Fake"
+
+                            
+            
+        BoxLayout:
+            orientation: "vertical"
+            size_hint: (1, 1)
+            size: (100,200)
+            ScrollView:
+                do_scroll: False
+                size_hint: (1, 1)
+                DrawRawPhysicsWidget:
+                    index: -3
+                    text: "foo"
+                    size_hint: (1,1)
+                    id: viewer
+
+            BoxLayout:
+                size_hint: (1,0.1)
+                orientation: "horizontal"
+                Button:
+                    id: zoomOutButton
+                    text: "-"
+                Button:
+                    id: zoomInButton
+                    text: "+"
+

@@ -10,13 +10,20 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.lang import Builder
 from kivy.uix.bubble import Bubble
+from kivy.uix.widget import Widget
+from kivy.uix.tabbedpanel import TabbedPanel
 from kivy.clock import Clock
 from kivy.graphics import *
+from kivy.core.image import Image as CoreImage
+
+from kivy.properties import NumericProperty, ReferenceListProperty,\
+    ObjectProperty
+
 from Box2D import *
-from math import cos,sin
+from math import cos,sin,degrees
 
 import numpy
-
+import functools
 
 class DebugDraw(object):
     def __init__(self, world, widget, offset, scale):
@@ -129,12 +136,6 @@ class DebugDraw(object):
         with self.canvas:
             e = Ellipse(pos=center,size=size,color=Color(*color))
 
-        #cc = InstructionGroup()
-        #cc.add(Color(1,0,0,1))
-        #cc.add(Ellipse(pos=center, size=size))
-        ## Here, self should be a Widget or subclass
-        #[self.canvas.add(group) for group in [cc]]
-
     def drawSegment(self,v1, v2, color):
         v1 = (numpy.array(v1)+self.offset)*self.scale
         v2 = (numpy.array(v2)+self.offset)*self.scale
@@ -158,20 +159,23 @@ class DebugDraw(object):
             Mesh(vertices=v,indices=indices,mode='triangle_fan',color=Color(*color))
 
 
+class SelectGooBubble(Bubble):
+    pass
+
+
 class DrawRawPhysicsWidget(BoxLayout):
-    def __init__(self):
+    def __init__(self,*arg,**kwarg):
         self.lastTouch = None
+        super(DrawRawPhysicsWidget,self).__init__(orientation="horizontal",*arg,**kwarg)
 
-        super(DrawRawPhysicsWidget,self).__init__()
 
+        self.gooImg = CoreImage.load("res/pink_goo_128.png")
+        self.gooTexture = self.gooImg.texture
         self.world = b2World((0.0,-10.0))
 
         scale = 30.0
         offset = numpy.array([15,5],dtype='float32')
         self.debugDraw = DebugDraw(world=self.world,widget=self, scale=scale, offset=offset)
-
-
-
 
         # Tell the framework we're going to use contacts, so keep track of them
         # every Step.
@@ -180,78 +184,12 @@ class DrawRawPhysicsWidget(BoxLayout):
         # Ground body
         world=self.world
         ground = world.CreateBody(
-                    shapes=b2EdgeShape( vertices=[(-50,0),(50,0)],)
-                )
-
-        xlow, xhi = -5, 5
-        ylow, yhi = 2, 35
-        random_vector = lambda: b2Vec2(b2Random(xlow, xhi), b2Random(ylow, yhi))
-
-        # Small triangle
-        triangle=b2FixtureDef(
-                shape=b2PolygonShape(vertices= [(-1,0),(1,0),(0,2)]),
-                density=1,
-                )
-
-        world.CreateBody(
-                type=b2_dynamicBody,
-                position=random_vector(),
-                fixtures=triangle,
-                )
-
-        # Large triangle (recycle definitions)
-        triangle.shape.vertices = [2.0*b2Vec2(v) for v in triangle.shape.vertices]
-
-        trianglebody=world.CreateBody(
-                type=b2_dynamicBody,
-                position=random_vector(),
-                fixtures=triangle,
-                fixedRotation=True, # <-- note that the large triangle will not rotate
-                )
-
-        # Small box
-        box=b2FixtureDef(
-                shape=b2PolygonShape(box=(1, 0.5)),
-                density=1,
-                restitution=0.1,
-                )
-
-        world.CreateBody(
-                type=b2_dynamicBody,
-                position=random_vector(),
-                fixtures=box,
-                )
-
-        # Large box
-        box.shape.box = (2, 1)
-        world.CreateBody(
-                type=b2_dynamicBody,
-                position=random_vector(),
-                fixtures=box,
-            )
-
-        # Small circle
-        circle=b2FixtureDef(
-                shape=b2CircleShape(radius=1),
-                density=1,
-                )
-
-        world.CreateBody(
-                    type=b2_dynamicBody,
-                    position=random_vector(),
-                    fixtures=circle,
-                )
-
-        # Large circle
-        circle.shape.radius *= 2
-        world.CreateBody(
-                    type=b2_dynamicBody,
-                    position=random_vector(),
-                    fixtures=circle,
+                    shapes=b2EdgeShape( vertices=[(-50,0),(50,10)],)
                 )
 
 
         self.world.DebugDraw = self.debugDraw
+        self.goos = []
 
     def setScale(self, scale):
         self.debugDraw.scale = scale
@@ -260,55 +198,88 @@ class DrawRawPhysicsWidget(BoxLayout):
         return self.debugDraw.scale
 
     def on_touch_down(self, touch):
+        print "self.size",self.size
+        print "contains"
         self.lastTouchPos = touch.pos
+
+        x = touch.pos[0]/self.debugDraw.scale - self.debugDraw.offset[0]
+        y = touch.pos[1]/self.debugDraw.scale - self.debugDraw.offset[1]
+
+        circle=b2FixtureDef(
+                shape=b2CircleShape(radius=1),
+                density=1,
+                friction=20
+                )
+
+        gooBody = self.world.CreateBody(
+                    type=b2_dynamicBody,
+                    position=(x,y),
+                    fixtures=circle,
+                )
+
+        self.goos.append(gooBody)
     def on_touch_move(self, touch):
-        d = numpy.array(touch.pos) - self.lastTouchPos
-        d /= self.debugDraw.scale
-        self.lastTouchPos = touch.pos
-        self.debugDraw.offset += d
+        print "move"
+        if self.lastTouchPos is not None:
+            print "move"
+            d = numpy.array(touch.pos) - self.lastTouchPos
+            d /= self.debugDraw.scale
+            self.lastTouchPos = touch.pos
+            self.debugDraw.offset += d
     def on_touch_up(self, touch):
         self.lastTouchPos = touch.pos    
-    def update(self, dt):
 
+    def update(self, dt):
+        self.canvas.clear()
         #print "dt",dt,self.size
         self.world.Step(dt,5,5)
         self.debugDraw.debugDraw()
+        scale = self.debugDraw.scale
+        offset = self.debugDraw.offset
+        with self.canvas:
+            for goo in self.goos:
+                pos = numpy.array(goo.position)
+                posA = pos + offset - 1.0 
+                posA *= scale
+                posB = pos + offset
+                posB *= scale
+
+                size = (2.0*scale, 2.0*scale)
+
+                PushMatrix()
+                rot = Rotate()
+                rot.angle = degrees(goo.angle)
+                #print goo.angle
+                rot.axis = (0,0,1)
+                rot.origin = posB
+                Rectangle(texture=self.gooTexture, pos=posA, size=size)
+                PopMatrix()
+                
 
     def wToS(c):
         return c
 
 
 class DrawPhysicsWidget(BoxLayout):
-    def __init__(self):
+    viewer = ObjectProperty(None)
+    zoomInButton = ObjectProperty(None)
+    zoomIOutButton = ObjectProperty(None)
+    def __init__(self,*arg,**kwarg):
         self.lastTouch = None
         super(DrawPhysicsWidget,self).__init__(orientation='vertical')
+        
+      
+        self.zoomOutButton.bind(on_release=lambda inst : self.zoomIn())
+        self.zoomInButton.bind(on_release=lambda inst : self.zoomOut())
 
-        self.viewer =  DrawRawPhysicsWidget()
-        self.add_widget(self.viewer)
-
-        self.ctrlLayer = BoxLayout(orientation='horizontal')
-        self.add_widget(self.ctrlLayer)
-
-        self.zoomOutButton = Button(text='-',size_hint=(1,0.1))
-        def cb(instance):
-            print self.getScale()
-            s = self.getScale()
-            ns = s/1.25
-            if ns > 1.0:
-                self.setScale(ns)
-        self.zoomOutButton.bind(on_release=cb)
-        self.ctrlLayer.add_widget(self.zoomOutButton)
-
-
-        self.zoomInButton = Button(text='+',size_hint=(1,0.1))
-        def cb(instance):
-            print self.getScale()
-            s = self.getScale()
-            self.setScale(s*1.25)
-        self.zoomInButton.bind(on_release=cb)
-        self.ctrlLayer.add_widget(self.zoomInButton)
-
-
+    def zoomIn(self):
+        s = self.getScale()
+        ns = s/1.25
+        if ns > 1.0:
+            self.setScale(ns)
+    def zoomOut(self):
+        s = self.getScale()
+        self.setScale(s*1.25)
     def setScale(self, scale):
         self.viewer.setScale(scale)
         
@@ -318,11 +289,11 @@ class DrawPhysicsWidget(BoxLayout):
     def update(self, dt):
         self.viewer.update(dt)
 
-class TestBubbleApp(App):
+class WorldOfPhysicsApp(App):
 
     def build(self):
         bc =  DrawPhysicsWidget()
         Clock.schedule_interval(bc.update,1.0/50)
         return bc
 if __name__ == '__main__':
-    TestBubbleApp().run()
+    WorldOfPhysicsApp().run()
