@@ -1,0 +1,42 @@
+#:kivy 1.0.9
+
+<GooBall>:
+    size: 50, 50 
+    canvas:
+        Ellipse:
+            pos: self.pos
+            size: self.size          
+
+
+
+<GooGame>:
+    BoxLayout:
+        orientation: "horizontal"
+        BoxLayout:
+            orientation: "vertical"
+            Button:
+                text: "goo select"
+                id: goo_select
+            Button:
+                text: "goo select"
+                id: goo_select
+            Button:
+                text: "goo select"
+                id: goo_select
+
+            BubbleButton:
+                text: 'Cut'
+            BubbleButton:
+                text: 'Copy'
+            BubbleButton:
+                text: 'Paste'
+                
+        #ball: pong_ball
+       
+        
+
+        
+        GooBall:
+            id: pong_ball
+            center: self.parent.center
+            
