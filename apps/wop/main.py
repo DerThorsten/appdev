@@ -4,7 +4,7 @@ Bubble
 
 Test of the widget Bubble.
 '''
-
+# kivy
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
@@ -12,6 +12,7 @@ from kivy.lang import Builder
 from kivy.uix.bubble import Bubble
 from kivy.uix.widget import Widget
 from kivy.uix.tabbedpanel import TabbedPanel
+from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.clock import Clock
 from kivy.graphics import *
 from kivy.core.image import Image as CoreImage
@@ -19,225 +20,138 @@ from kivy.core.image import Image as CoreImage
 from kivy.properties import NumericProperty, ReferenceListProperty,\
     ObjectProperty
 
+# mystuff
+from debug_draw import DebugDraw
 from Box2D import *
 from math import cos,sin,degrees
 
 import numpy
 import functools
-
-class DebugDraw(object):
-    def __init__(self, world, widget, offset, scale):
-        self.world = world
-        self.widget = widget
-        self.canvas = widget.canvas
-        self.offset = offset
-        self.scale = scale
+import level
 
 
-    def debugDraw(self):
+# 'rd'
 
-        self.canvas.clear()
-        for body in self.world.bodies:
-            fixtures = body.fixtures
-            btype = body.type
-            xf  =  body.transform
-            for f in fixtures:
-                if body.active==False :
-                    self.drawShape(f, xf, (0.5, 0.5, 0.3) )
-                elif btype == b2_staticBody:
-                    self.drawShape(f, xf, (0.5, 0.9, 0.5) )
-                elif btype == b2_kinematicBody:
-                    self.drawShape(f, xf, (0.5, 0.5, 0.5) )
-                elif body.awake==False:
-                    self.drawShape(f, xf, (0.6, 0.6, 0.6) )
-                else :
-                    self.drawShape(f, xf, (0.9, 0.7, 0.7) )
-
-        for joint in self.world.joints:
-            self.drawJoint(joint)
-
-        
-
-    def drawShape(self,f,t,color):
-        
-        ftype = f.type
-        shape = f.shape
-
-        if ftype == b2Shape.e_circle :
-            #print "circle"
-            center = b2Mul(t, shape.pos)
-            radius = shape.radius
-            axis = b2Mul(t.q,(1.0,0.0))
-
-            self.drawSolidCiricle(center, radius, axis, color)
-
-        elif ftype == b2Shape.e_edge :
-            #print "edge"
-            v1 = b2Mul(t, shape.vertex1)
-            v2 = b2Mul(t, shape.vertex2)
-            self.drawSegment(v1, v2, color)
-
-        elif ftype == b2Shape.e_chain :
-            #print "chain"
-            c = shape.vertexCount
-            vertices = shape.vertices
-            v1 = b2Mul(t, shape.vertices[0])
-            for i in range(c):
-                v2 = b2Mul(t, shape.vertices[i])
-                self.drawSegment(v1, v2, color)
-                self.drawSolidCiricle(v1, 0.05,(1.0,0.0), color)
-        elif ftype == b2Shape.e_polygon :
-            #print "polygon"
-            c = shape.vertexCount
-            vertices = shape.vertices
-            assert len(vertices) == c
-            verts = []
-            for i in range(c):
-                r = b2Mul(t, vertices[i])
-                verts.append(r)
-            self.drawSolidPolygon(verts,c,color)
+class ResManager(object):
+    def __init__(self, resolution='hd'):
+        pass
 
 
-    def drawJoint(self, joint):
-        jtype = joint.type 
-
-        bodyA = joint.bodyA
-        bodyB = joint.bodyB
-        tA = bodyA.transform
-        tB = bodyB.transform
-        xa = tA.position
-        xb = tB.position
-        pa = joint.anchorA
-        pb = joint.anchorB
-
-        color = (0.5, 0.8, 0.8)
-
-        if(isinstance(joint,b2RopeJoint)):
-            pass
-        elif(isinstance(joint,b2DistanceJoint)):
-            self.drawSegment(pa, pb, color)
-        elif(isinstance(joint,b2PulleyJoint)):
-            gA = joint.groundAnchorA
-            gB = joint.groundAnchorA
-            self.drawSegment(gA, pA, color)
-            self.drawSegment(gB, pB, color)
-            self.drawSegment(gA, gB, color)
-        elif(isinstance(joint,b2MouseJoint)):
-            pass
-        else:
-            self.drawSegment(xA, pA, color)
-            self.drawSegment(pA, pB, color)
-            self.drawSegment(xB, pB, color)
-
-    def drawSolidCiricle(self, center, radius, axis, color):
-        center = (numpy.array(center)-radius+self.offset)*self.scale
-        size = numpy.array([radius*2,radius*2])*self.scale
-        #print "color",color
-        with self.canvas:
-            e = Ellipse(pos=center,size=size,color=Color(*color))
-
-    def drawSegment(self,v1, v2, color):
-        v1 = (numpy.array(v1)+self.offset)*self.scale
-        v2 = (numpy.array(v2)+self.offset)*self.scale
-        with self.canvas:
-            Line(points=[v1[0],v1[1],v2[0],v2[1]], width=1.5, color=Color(*color))
-
-    def drawSolidPolygon(self,vertices, vertexCount, color):
-        vertices = numpy.array(vertices)
-        vertices[:,0] += self.offset[0]
-        vertices[:,1] += self.offset[1]
-        vertices*=self.scale
-
-        assert vertices.shape[0] ==vertexCount
-
-        v = [] 
-        indices = []
-        for i in range(vertices.shape[0]):
-            v.extend([vertices[i,0],vertices[i,1],0,0])
-            indices.append(i)
-        with self.canvas:
-            Mesh(vertices=v,indices=indices,mode='triangle_fan',color=Color(*color))
 
 
-class SelectGooBubble(Bubble):
-    pass
 
 
-class DrawRawPhysicsWidget(BoxLayout):
+
+
+
+class GameRendererWidget(BoxLayout):
     def __init__(self,*arg,**kwarg):
-        self.lastTouch = None
-        super(DrawRawPhysicsWidget,self).__init__(orientation="horizontal",*arg,**kwarg)
+        self.lastTouchPos = None
+        super(GameRendererWidget,self).__init__(orientation="horizontal",*arg,**kwarg)
+
+        self.scale = 15.0
+        self.offset = numpy.array([0,0],dtype='float32')
+        # load level
+        self.level = level.SimpleLevel(gameRender=self)
+        self.level.initPhysics()
+        self.level.start()
 
 
+        self.world = self.level.world
         self.gooImg = CoreImage.load("res/pink_goo_128.png")
         self.gooTexture = self.gooImg.texture
-        self.world = b2World((0.0,-10.0))
-
-        scale = 30.0
-        offset = numpy.array([15,5],dtype='float32')
-        self.debugDraw = DebugDraw(world=self.world,widget=self, scale=scale, offset=offset)
-
-        # Tell the framework we're going to use contacts, so keep track of them
-        # every Step.
-        self.using_contacts=True
-
-        # Ground body
-        world=self.world
-        ground = world.CreateBody(
-                    shapes=b2EdgeShape( vertices=[(-50,0),(50,10)],)
-                )
+        
 
 
-        self.world.DebugDraw = self.debugDraw
+        self.debugDraw = DebugDraw(world=self.world,widget=self, scale=self.scale, offset=self.offset)
+
+
+
+
+
         self.goos = []
 
     def setScale(self, scale):
+        self.scale = scale
         self.debugDraw.scale = scale
 
     def getScale(self):
         return self.debugDraw.scale
 
+
+    def canvas_point_to_world(self, point,out=None):
+        s = self.scale
+        o = self.offset
+        x,y = point 
+        wx  = x/s - o[0]
+        wy  = y/s - o[1]
+        return (wx,wy)
+
+    def canvas_length_to_world(self,length,out=None):
+        return  length/self.scale
+
+    def world_point_to_canvas(self,point,out=None):
+        s = self.scale
+        o = self.offset
+        x,y = point 
+        cx  = (x+ o[0])*scale
+        cy  = (y+ o[1])*scale
+        return (cx, cy)
+
+    def world_length_to_canvas(self,length,out=None):
+        return length*self.scale
+
+
     def on_touch_down(self, touch):
-        print "self.size",self.size
-        print "contains"
-        self.lastTouchPos = touch.pos
+        #return False
+        if touch.button == 'scrollup':
+            self.setScale(1.25*self.getScale())
+        elif touch.button == 'scrolldown':
+            os  = self.getScale()
+            ns = os/1.25
+            if ns > 1.0:
+                self.setScale(ns)
+        else :
+            levelCb = self.level.world_on_touch_down
+            wPos = self.canvas_point_to_world(touch.pos)
+            r = levelCb(wPos , touch)
 
-        x = touch.pos[0]/self.debugDraw.scale - self.debugDraw.offset[0]
-        y = touch.pos[1]/self.debugDraw.scale - self.debugDraw.offset[1]
+            circle=b2FixtureDef(shape=b2CircleShape(radius=1),
+                                density=1,friction=20)
 
-        circle=b2FixtureDef(
-                shape=b2CircleShape(radius=1),
-                density=1,
-                friction=20
-                )
+            gooBody = self.world.CreateBody(type=b2_dynamicBody,
+                                            position=wPos,
+                                            fixtures=circle)
 
-        gooBody = self.world.CreateBody(
-                    type=b2_dynamicBody,
-                    position=(x,y),
-                    fixtures=circle,
-                )
-
-        self.goos.append(gooBody)
+            self.goos.append(gooBody)
     def on_touch_move(self, touch):
-        print "move"
-        if self.lastTouchPos is not None:
-            print "move"
-            d = numpy.array(touch.pos) - self.lastTouchPos
-            d /= self.debugDraw.scale
-            self.lastTouchPos = touch.pos
-            self.debugDraw.offset += d
+        levelCb = self.level.world_on_touch_move
+        wPos = self.canvas_point_to_world(touch.pos)
+
+        r = levelCb(wPos , touch)
+        d = numpy.array(touch.pos) - numpy.array(touch.ppos)
+        d /= self.debugDraw.scale
+        self.debugDraw.offset += d
+        self.offset = self.debugDraw.offset
     def on_touch_up(self, touch):
-        self.lastTouchPos = touch.pos    
+        if touch.button == 'scrollup':
+            pass
+        elif touch.button == 'scrolldown':
+            pass
+        else :
+            levelCb = self.level.world_on_touch_up
+            wPos = self.canvas_point_to_world(touch.pos)
+            r = levelCb(wPos , touch)   
 
     def update(self, dt):
         self.canvas.clear()
         #print "dt",dt,self.size
-        self.world.Step(dt,5,5)
         self.debugDraw.debugDraw()
         scale = self.debugDraw.scale
         offset = self.debugDraw.offset
         with self.canvas:
             for goo in self.goos:
+
                 pos = numpy.array(goo.position)
                 posA = pos + offset - 1.0 
                 posA *= scale
@@ -260,13 +174,26 @@ class DrawRawPhysicsWidget(BoxLayout):
         return c
 
 
+
+class CreateAndSelectWidget(BoxLayout):
+
+    selectObjectButton = ObjectProperty(None)
+    killObjectButton = ObjectProperty(None)
+    blackGooButton = ObjectProperty(None)
+    greenGooButton = ObjectProperty(None)
+    redGooButton = ObjectProperty(None)
+    pinkGooButton = ObjectProperty(None)
+
+    def __init__(self,*arg,**kwarg):
+        super(CreateAndSelectWidget,self).__init__(*arg, **kwarg)
+
+
 class DrawPhysicsWidget(BoxLayout):
     viewer = ObjectProperty(None)
     zoomInButton = ObjectProperty(None)
     zoomIOutButton = ObjectProperty(None)
     def __init__(self,*arg,**kwarg):
-        self.lastTouch = None
-        super(DrawPhysicsWidget,self).__init__(orientation='vertical')
+        super(DrawPhysicsWidget,self).__init__(*arg, **kwarg)
         
       
         self.zoomOutButton.bind(on_release=lambda inst : self.zoomIn())
@@ -289,11 +216,13 @@ class DrawPhysicsWidget(BoxLayout):
     def update(self, dt):
         self.viewer.update(dt)
 
+
 class WorldOfPhysicsApp(App):
 
     def build(self):
         bc =  DrawPhysicsWidget()
         Clock.schedule_interval(bc.update,1.0/50)
         return bc
+        #return TheGame()
 if __name__ == '__main__':
     WorldOfPhysicsApp().run()

@@ -1,7 +1,7 @@
 #:kivy 1.0.9
 
 
-<DrawRawPhysicsWidget>:
+<GameRendererWidget>:
     size_hint: (1, 1)
     BoxLayout:
         size_hint: (1, 1)
@@ -19,80 +19,78 @@
     BubbleButton:
         text: 'Paste'
 
+
+
+<CreateAndSelectWidget>:
+    size_hint: (0.15,1)
+    orientation: "vertical"
+    TabbedPanel:
+        tab_pos: "left_mid"
+        do_default_tab: False
+        TabbedPanelItem:
+            text: "select"
+            BoxLayout:
+                orientation: "vertical"
+                Button:
+                    id: selectObjectButton
+                    text: "->"
+                Button:
+                    id: killObjectButton
+                    text: "kill"
+        TabbedPanelItem:
+            text: "create"
+            default_tab:True
+            BoxLayout:
+                orientation: "vertical"
+                Button:
+                    id: blackGooButton
+                    text: "Hello"
+                    Image:
+                        size: (self.parent.size[0], self.parent.size[1])
+                        y: self.parent.y
+                        x: self.parent.x
+                        source: 'res/black_goo_128.png'
+                Button:
+                    id: greenGooButton
+                    text: "Hello"
+                    Image:
+                        size: (self.parent.size[0], self.parent.size[1])
+                        y: self.parent.y #+ self.parent.height - 30
+                        x: self.parent.x
+                        source: 'res/green_goo_128.png'
+                Button:
+                    id: redGooButton
+                    text: "Hello"
+                    Image:
+                        size: (self.parent.size[0], self.parent.size[1])
+                        y: self.parent.y #+ self.parent.height - 30
+                        x: self.parent.x
+                        source: 'res/red_goo_128.png'
+                Button:
+                    id: pinkGooButton
+                    text: "Hello"
+                    Image:
+                        size: (self.parent.size[0], self.parent.size[1])
+                        y: self.parent.y #+ self.parent.height - 30
+                        x: self.parent.x
+                        source: 'res/pink_goo_128.png'
+            
+
+
+
 <DrawPhysicsWidget>:
     viewer:viewer
-    zoomOutButton:zoomOutButton
-    zoomInButton:zoomInButton
-
+    zoomOutButton: zoomOutButton
+    zoomInButton: zoomInButton
+    createAndSelectWidget: createAndSelectWidget
     BoxLayout:
         opacity:1
         size_hint: (1, 1)
         orientation: "horizontal"
-        BoxLayout:
-            size_hint: (0.15,1)
-            orientation: "vertical"
-            TabbedPanel:
-                tab_pos: "left_mid"
-                do_default_tab: False
-                TabbedPanelItem:
-                    text: "Goos"
-                    default_tab:True
-                    BoxLayout:
-                        orientation: "vertical"
-                        Button:
-                            id: blackGooButton
-                            text: "Hello"
-                            Image:
-                                size: (self.parent.size[0], self.parent.size[1])
-                                y: self.parent.y
-                                x: self.parent.x
-                                source: 'res/black_goo_128.png'
-                        Button:
-                            id: greenGooButton
-                            text: "Hello"
-                            Image:
-                                size: (self.parent.size[0], self.parent.size[1])
-                                y: self.parent.y #+ self.parent.height - 30
-                                x: self.parent.x
-                                source: 'res/green_goo_128.png'
-                        Button:
-                            id: redGooButton
-                            text: "Hello"
-                            Image:
-                                size: (self.parent.size[0], self.parent.size[1])
-                                y: self.parent.y #+ self.parent.height - 30
-                                x: self.parent.x
-                                source: 'res/red_goo_128.png'
-                        Button:
-                            id: pinkGooButton
-                            text: "Hello"
-                            Image:
-                                size: (self.parent.size[0], self.parent.size[1])
-                                y: self.parent.y #+ self.parent.height - 30
-                                x: self.parent.x
-                                source: 'res/pink_goo_128.png'
-                TabbedPanelItem:
-                    text: "r and p"
-                    BoxLayout:
-                        orientation: "vertical"
-                        Button:
-                            id: redGooButton
-                            text: "Hello"
 
-                TabbedPanelItem:
-                    text: "Fake"
-                TabbedPanelItem:
-                    text: "Fake"
-                TabbedPanelItem:
-                    text: "Fake"
-                TabbedPanelItem:
-                    text: "Fake"
-                TabbedPanelItem:
-                    text: "Fake"
-                TabbedPanelItem:
-                    text: "Fake"
-
-                            
+        CreateAndSelectWidget:
+            id: createAndSelectWidget
+            size_hint: (0.2, 1)              
             
         BoxLayout:
             orientation: "vertical"
@@ -101,7 +99,7 @@
             ScrollView:
                 do_scroll: False
                 size_hint: (1, 1)
-                DrawRawPhysicsWidget:
+                GameRendererWidget:
                     index: -3
                     text: "foo"
                     size_hint: (1,1)
@@ -117,3 +115,33 @@
                     id: zoomInButton
                     text: "+"
 
+
+
+
+<MenuScreen>:
+    BoxLayout:
+        Button:
+            text: 'Goto settings'
+            on_press:
+                root.manager.transition.direction = 'left'
+                parent._screen_manager.current = 'settings'
+        Button:
+            text: 'Quit'
+
+<SettingsScreen>:
+    BoxLayout:
+        Button:
+            text: 'My settings button'
+        Button:
+            text: 'Back to menu'
+            on_press:
+                root.manager.transition.direction = 'right'
+                root.manager.current = 'menu'
+
+
+<TheGame>:
+    BoxLayout:
+        ScreenManager:
+            id: _screen_manager
+            MenuScreen:
+            SettingsScreen:
