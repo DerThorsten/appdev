@@ -94,7 +94,6 @@
                         x: self.parent.x
                         source: 'res/black_goo_128.png'
 
-
                 Button:
                     id: greenGooButton
                     text: "GB"
@@ -104,6 +103,16 @@
                         y: self.parent.y #+ self.parent.height - 30
                         x: self.parent.x
                         source: 'res/green_goo_128.png'
+                        
+                Button:
+                    id: anchorGooButton
+                    #text: "Anchor\nGoo"
+                    on_release: root.on_release_creator_button("anchor-goo")
+                    Image:
+                        size: (self.parent.size[0], self.parent.size[1])
+                        y: self.parent.y #+ self.parent.height - 30
+                        x: self.parent.x
+                        source: 'res/amboss_goo_128.png'
 
                 Button:
                     id: flyGooButton
@@ -115,15 +124,7 @@
                     #    x: self.parent.x
                     #    source: 'res/green_goo_128.png'
 
-                Button:
-                    id: anchorGooButton
-                    text: "Anchor\nGoo"
-                    #on_release: root.on_release_creator_button("green-goo")
-                    #Image:
-                    #    size: (self.parent.size[0], self.parent.size[1])
-                    #    y: self.parent.y #+ self.parent.height - 30
-                    #    x: self.parent.x
-                    #    source: 'res/green_goo_128.png'
+                
                 Button:
                     id: wheelGooButton
                     text: "Wheel\nGoo"

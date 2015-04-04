@@ -2,11 +2,10 @@ import numpy
 import networkx as nx
 from Box2D import *
 from kivy.clock import Clock
-from debug_draw import CanvasDraw
 from kivy.logger import Logger
 import operator
 import world_helper as wh
-import debug_draw
+from wop import DebugDraw,CanvasDraw
 import math
 from wop.game_items import *
 
@@ -78,11 +77,13 @@ class GooGraph(nx.Graph):
         self.level = level
         self.world = level.world
     def canGooBeAdded(self, goo, pos):
-
         gParam = goo.param()
         nGoos = self.number_of_nodes()
+        print "GOO TO ADD",goo, "ngoos",self.number_of_nodes()
+        print "min b edge",gParam.minBuildEdges
+
         #Logger.debug("GOO GRAPH: #goos %d " %nGoos)
-        gooDist = goo.gooDistance()*1.2
+        gooDist = gParam.maxGooDist*1.2
         if nGoos==0:
             return (1,None)
         #if nGoos == 1:
@@ -97,10 +98,13 @@ class GooGraph(nx.Graph):
 
         dists, sortedBodies = query.sortedBodies()
         nOther = len(dists)
-        if nOther<gParam.minBuildEdges:
+        print "nOthers",nOther
+        if nOther ==0 :
+            return (0, None)
+        if nOther<gParam.minBuildEdges and not(nGoos < gParam.minBuildEdges):
             return (0,None)
         elif nOther == 1:
-            if nGoos==1:
+            if nGoos==1 or gParam.minBuildEdges==1:
                 b0 = sortedBodies[0]
                 return (1,(b0,))
             else :
@@ -122,20 +126,52 @@ class GooGraph(nx.Graph):
 
 
 
+class LevelDestructionListener(b2DestructionListener):
+    """
+    The destruction listener callback:
+    "SayGoodbye" is called when a joint or shape is deleted.
+    """
+    def __init__(self,level, **kwargs):
+        super(LevelDestructionListener, self).__init__(**kwargs)
+
+    def SayGoodbye(self, pobject):
+        if isinstance(pobject, b2Joint):
+            if self.level.mouseJoint==pobject:
+                self.level.mouseJoint=None
+            else:
+                self.level.joint_destroyed(pobject)
+        elif isinstance(pobject, b2Fixture):
+            self.level.FixtureDestroyed(pobject)
+
+
+
 class Level(object):
     def __init__(self,world, gameRender):
+
         self.world = world
+        self.destructionListener = LevelDestructionListener(level=self)
+        self.world.destructionListener=self.destructionListener
+
+
         self.gameRender = gameRender
-        self.debugDraw = debug_draw.DebugDraw(world=None,
+        self.debugDraw = DebugDraw(world=None,
                             scale=self.gameRender.scale, 
                             offset=self.gameRender.offset)
 
         self.wmManager = None
-        
         self.gooGraph = GooGraph(self)
+
+        self.mouseJoint = None
+
     ###############################
     # events
     ###############################
+
+    def joint_destroyed(self, joint):
+        pass
+
+    def fixture_destroyed(self, fixture):
+        pass
 
     def setScale(self, scale):
         self.gameRender.scale = scale
@@ -148,16 +184,37 @@ class Level(object):
         return self.gameRender.offset   
 
     def world_on_touch_down(self, wpos, touch):
-        #Logger.debug("Level: touch down %.1f %.1f"%wpos ) 
-        self.wmManager.world_on_touch_down(wpos, touch)
+        body = wh.body_at_pos(self.world, pos=wpos)
+
+        if body is not None:
+
+            self.mouseJoint = self.world.CreateMouseJoint(
+                bodyA=self.groundBody,
+                bodyB=body,
+                target=wpos,
+                maxForce=1000.0*body.mass
+            )
+            body.awake = True
+
+        else :
+            self.wmManager.world_on_touch_down(wpos, touch)
+
     def world_on_touch_move(self, wpos, wppos, touch):
         #Logger.debug("Level: touch move %.1f %.1f"%wpos ) 
-        self.wmManager.world_on_touch_move(wpos, wppos, touch)
+        
+        if self.mouseJoint is not None:
+            self.mouseJoint.target  =  wpos
+        else :
+            self.wmManager.world_on_touch_move(wpos, wppos, touch)
 
     def world_on_touch_up(self, wpos, touch):
         ##Logger.debug("Level: touch  up %.1f %.1f"%wpos ) 
         self.wmManager.world_on_touch_up(wpos, touch)
-
+        if self.mouseJoint is not None:
+            self.world.DestroyJoint(self.mouseJoint)
+            self.mouseJoint = None
+        else :
+            self.wmManager.world_on_touch_up(wpos, touch)
     def set_wm_manager(self, wmManager):
         self.wmManager = wmManager
 
@@ -195,8 +252,8 @@ class Level(object):
            frequencyHz=gParam.frequencyHz,
            dampingRatio=gParam.dampingRatio,
            bodyA=gooA.body,bodyB=gooB.body,
-           anchorA=gooA.body.position,
-           anchorB=gooB.body.position
+           localAnchorA=gooA.localAnchor(),
+           localAnchorB=gooB.localAnchor()
         )
         j=self.world.CreateJoint(dfn)
         if gParam.autoExpanding:
@@ -212,19 +269,31 @@ class Level(object):
         self.debugDraw.world = self.world
         
         # add debug draw to render queue
-        gr.add_render_item(self.debugDraw.debugDraw,z=0)
+        #gr.add_render_item(self.debugDraw.debugDraw,z=0)
         
         # add level render to render queue
         gr.add_render_item(self.render_level,z=1)
 
         # render goos
+        gr = self.gameRender
+        
+        def renderGoosJoints():
+            for e in self.gooGraph.edges(data=True):
+                (gooA,gooB,d) = e
+                j=d['joint']
+                gooA.renderJoint(gr,j,gooB)      
+                gooB.renderJoint(gr,j,gooA)  
         def renderAllGoos():
             for goo in self.gooGraph.nodes():
                 goo.render(self)
-        gr.add_render_item(renderAllGoos,z=2)
+        gr.add_render_item(renderAllGoos,z=4)
+        gr.add_render_item(renderGoosJoints,z=3)
 
         # builder/adder tentative render
-        gr.add_render_item(self.wmManager.render, z=3)
+        # if and only if there is NO mouse joint
+        if self.mouseJoint is None:
+            gr.add_render_item(self.wmManager.render, z=4)
+
         # do the actual rendering
         gr.render()
 
@@ -232,10 +301,11 @@ class Level(object):
 def boxVertices(p0, p1, shiftOrigin=True):
     w = p1[0]-p0[0]
     h = p1[1]-p0[1]
-    a = numpy.array([(0,0),(0,h),(w,h),(w,0),(0,0)])#+p0
-    if not shiftOrigin :
-        a+=p0
-    return a
+    if shiftOrigin:
+        return [(0,0),(0,h),(w,h),(w,0),(0,0)]
+    else:
+        px,py = p0
+        return [(0+px,0+py),(0+px,h+py),(w+px,h+py),(w+px,0+py),(0+px,0+py)]
 
 class SimpleLevel(Level):
     def __init__(self, gameRender):
@@ -244,8 +314,8 @@ class SimpleLevel(Level):
 
         self.roi = (-5,-5), (45, 45)
         self.s = 40
-
-    def initPhysics(self):
+        self.groundBody = None
+    def initPhysics(self):  
         super(SimpleLevel, self).initPhysics()
 
         
@@ -253,8 +323,8 @@ class SimpleLevel(Level):
 
 
         s = self.s
-        ground = self.world.CreateBody(position=(0, 0))
-        ground.CreateEdgeChain([(0,0),(0,s),(s,s),(s,0), (0,0) ])
+        self.groundBody = self.world.CreateBody(position=(0, 0))
+        self.groundBody.CreateEdgeChain([(0,0),(0,s),(s,s),(s,0), (0,0) ])
 
 
 

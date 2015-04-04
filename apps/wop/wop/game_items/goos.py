@@ -11,7 +11,7 @@ from kivy.logger import Logger
 from kivy.graphics import *
 from kivy.core.audio import SoundLoader
 
-
+from wop import CanvasDraw, DebugDraw
 
 
 class GooParam(object):
@@ -19,7 +19,7 @@ class GooParam(object):
         shape = 'ellipse', 
         gooSize = (2.0, 2.0),
         allowsRotation = True,
-        friction = 1000.0,
+        friction = 10.0,
         density = 1.0,
         gravityMultiplier = 1.0,
         minGooDist = 4.0,
@@ -28,7 +28,7 @@ class GooParam(object):
         expandingDist = None,
         frequencyHz = 2.0,
         dampingRatio = 0.1,
-        minBuildEdges = 1,
+        minBuildEdges = 2,
         maxBuildEdges = 5,
         canBeAddedAsJoint = True,
         addAsJointDist = None,
@@ -75,6 +75,17 @@ class Goo(GameItem):
     def couldBeAddedAsJoint(self, level, wpos):
         raise RuntimeError("")
 
+    def renderJoint(self,gr, joint, otherGoo):
+        pa = joint.anchorA
+        pb = joint.anchorB
+        Logger.debug("RoundGoo: render joint")
+        canvasDraw =CanvasDraw( gr.offset, gr.scale)
+        canvasDraw.drawSegment(pa, pb, color=(1,1,1),width=1.5)
+
+
+    def localAnchor(self):
+        return (0,0)
+
 class RoundGoo(Goo):
     #__metaclass__ = ABCMeta
     def __init__(self):
@@ -94,6 +105,7 @@ class RoundGoo(Goo):
         self.render_it(level, pos,angle)
 
     def render_it(self, level,  pos, angle):
+        #c = Color(1,1,1)
         goo_radius = self.__class__.gooRadius()
 
         posA = level.gameRender.world_point_to_canvas(pos-goo_radius)
@@ -107,7 +119,7 @@ class RoundGoo(Goo):
         rot.axis = (0,0,1)
         rot.origin = posB
         Rectangle(texture=self.__class__.gooTexture(), 
-                  pos=posA, size=size)
+                  pos=posA, size=size,color=Color(1,1,1,1.0))
         PopMatrix()
 
 
@@ -150,6 +162,12 @@ class BlackGoo(RoundGoo):
     _gooRadius = 1.0
     _gooDist = 8.0 * _gooRadius
 
+    def renderJoint(self,gr, joint, otherGoo):
+        pa = joint.anchorA
+        pb = joint.anchorB
+        Logger.debug("RoundGoo: render joint")
+        canvasDraw =CanvasDraw( gr.offset, gr.scale)
+        canvasDraw.drawSegment(pa, pb, color=(0.2,0.2,0.2),width=3)
 
     @classmethod
     def playBuildSound(cls):
@@ -180,6 +198,14 @@ class GreenGoo(RoundGoo):
     _gooRadius = 1.5
     _gooDist = 8.0 * _gooRadius
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
+
+    def renderJoint(self,gr, joint, otherGoo):
+        pa = joint.anchorA
+        pb = joint.anchorB
+        Logger.debug("RoundGoo: render joint")
+        canvasDraw =CanvasDraw( gr.offset, gr.scale)
+        canvasDraw.drawSegment(pa, pb, color=(0.2,0.7,0.2),width=3)
+
     @classmethod
     def playBuildSound(cls):
        GreenGoo._buildSound.play()
@@ -200,3 +226,103 @@ class GreenGoo(RoundGoo):
 
     def __init__(self):
         super(GreenGoo, self).__init__()
+
+
+
+
+class AnchorGoo(Goo):
+    
+    _gooParam = GooParam(minBuildEdges=1,gooSize=(3,3), density=3000,
+                         autoExpanding=False)
+    _gooImg = CoreImage.load("res/amboss_goo_128.png")
+    _gooTexture = _gooImg.texture
+
+    def __init__(self):
+        super(Goo, self).__init__()
+        self.body = None
+    @classmethod
+    def playBuildSound(cls):
+        pass
+    @classmethod
+    def param(cls):
+       return AnchorGoo._gooParam
+
+    @classmethod
+    def gooTexture(cls):
+        return AnchorGoo._gooTexture
+
+
+
+    def render(self, level):
+        pos = numpy.array(self.body.position)
+        angle = degrees(self.body.angle)
+
+        self.render_it(level, pos,angle)
+
+    def render_it(self, level,  pos, angle):
+
+        param = self.param()
+        gooSize = param.gooSize
+
+
+        cpos = level.gameRender.world_point_to_canvas(pos)
+        cSize = level.gameRender.world_length_to_canvas(param.gooSize)
+        PushMatrix()
+        rot = Rotate()
+        rot.angle = angle
+        #print goo.angle
+        rot.axis = (0,0,1)
+        rot.origin = cpos
+        Rectangle(pos=cpos, size=cSize,color=Color(1,1,1,1.0),
+                  texture=self.gooTexture())
+        PopMatrix()
+
+
+
+    def render_tentative(self, level, pos, canBeAdded):
+        param = self.param()
+        posB = level.gameRender.world_point_to_canvas(pos)
+        cSize = level.gameRender.world_length_to_canvas(param.gooSize)
+        if canBeAdded:
+            e = Rectangle(pos=posB,size=cSize,color=Color(0,1,0,0.3))
+            self.render_it(level, pos, 0.0)
+        else :
+            #posA = level.gameRender.world_point_to_canvas(pos-gooRadius)
+            self.render_it(level, pos, 0.0)
+            #cRad = level.gameRender.world_length_to_canvas(gooRadius)
+            #size = (2.0*cRad, 2.0*cRad)
+            e = Rectangle(pos=posB,size=cSize,color=Color(1,0,0,0.3))
+            
+
+    def addToWorld(self, world, pos):
+        param = self.param()
+        sx,sy = param.gooSize
+        assert sx == sy
+        self.verts = [
+            ( (0.0/5.0)*sx, (0.0/4.0)*sy),
+            ( (5.0/5.0)*sx, (0.0/4.0)*sy),
+            ( (4.0/5.0)*sx, (3.0/4.0)*sy),
+            ( (1.0/5.0)*sx, (3.0/4.0)*sy),
+            ( (0.0/5.0)*sx, (0.0/4.0)*sy)
+        ]
+        rad = (sx / 5.0)/2.0
+        circlePos = (2.5/5.0)*sx , (4.0/5.0)*sy
+        poly   = b2PolygonShape(vertices=self.verts)
+        circle = b2CircleShape(radius=rad ,pos=circlePos)
+
+        shapes = [poly,circle]
+
+        fdef = b2FixtureDef(shape=poly,
+            density=param.density,
+            friction=param.friction
+        )
+        self.body = world.CreateBody(type=b2_dynamicBody,
+                                        position=pos,
+                                        shapes=shapes,
+                                        shapeFixture=fdef)
+        self.body.userData = self
+
+    def localAnchor(self):
+        param = self.param()
+        sx,sy = param.gooSize
+        return (0.5*sx, (4.0/5.0)*sy)

@@ -23,7 +23,7 @@ from kivy.properties import NumericProperty, ReferenceListProperty,\
 
 # mystuff
 import world_helper as wh
-from debug_draw import DebugDraw
+from wop import DebugDraw
 from Box2D import *
 from math import cos,sin,degrees
 
@@ -71,7 +71,10 @@ class GameRendererWidget(BoxLayout):
         return (wx,wy)
 
     def canvas_length_to_world(self,length,out=None):
-        return  length/self.scale
+        if isinstance(length,(list,tuple)):
+            return [l/self.scale for l in length]
+        else : 
+            return  length/self.scale
 
     def world_point_to_canvas(self,point,out=None):
         s = self.scale
@@ -82,14 +85,20 @@ class GameRendererWidget(BoxLayout):
         return (cx, cy)
 
     def world_length_to_canvas(self,length,out=None):
-        return length*self.scale
+        if isinstance(length,(list,tuple)):
+            return [l*self.scale for l in length]
+        else :
+            return length*self.scale
 
 
     def on_touch_down(self, touch):
         #return False
-        if touch.button == 'scrollup':
+        hasButton = False
+        if 'button' in touch.profile:
+            hasButton = True
+        if hasButton and touch.button == 'scrollup':
             self.setScale(1.25*self.getScale())
-        elif touch.button == 'scrolldown':
+        elif hasButton and touch.button == 'scrolldown':
             os  = self.getScale()
             ns = os/1.25
             if ns > 1.0:
@@ -121,39 +130,19 @@ class GameRendererWidget(BoxLayout):
         #self.offset += d
 
     def on_touch_up(self, touch):
-        if touch.button == 'scrollup':
+        hasButton = False
+        if 'button' in touch.profile:
+            hasButton = True
+        if hasButton and touch.button == 'scrollup':
             pass
-        elif touch.button == 'scrolldown':
+        elif hasButton and touch.button == 'scrolldown':
             pass
         else :
             levelCb = self.level.world_on_touch_up
             wPos = self.canvas_point_to_world(touch.pos)
             r = levelCb(wPos , touch)   
 
-    def update(self, dt):
-        if False:
-            self.canvas.clear()
-            #print "dt",dt,self.size
-            self.debugDraw.debugDraw()
-            scale = self.debugDraw.scale
-            offset = self.debugDraw.offset
-            with self.canvas:
-                for goo in self.goos:
 
-                    pos = numpy.array(goo.position)
-                    posA = pos + offset - 1.0 
-                    posA *= scale
-                    posB = pos + offset
-                    posB *= scale
-                    size = (2.0*scale, 2.0*scale)
-                    PushMatrix()
-                    rot = Rotate()
-                    rot.angle = degrees(goo.angle)
-                    #print goo.angle
-                    rot.axis = (0,0,1)
-                    rot.origin = posB
-                    Rectangle(texture=self.gooTexture, pos=posA, size=size)
-                    PopMatrix()
                 
 
     def render(self):
@@ -162,9 +151,10 @@ class GameRendererWidget(BoxLayout):
         sortedzValues = sorted(zValues)
 
         self.canvas.clear()
-        with self.canvas:
-            for z in sortedzValues:
-                renderList = toRender[z]
+        
+        for z in sortedzValues:
+            renderList = toRender[z]
+            with self.canvas:
                 for renderItem in renderList:
                     renderItem()
         for z in zValues:
@@ -282,6 +272,8 @@ class RoundGooCreator(GooCreator):
             else:
                 pass
 
+
+
 class BlackGooCreator(RoundGooCreator):
     def __init__(self):
         super(BlackGooCreator,self).__init__()
@@ -294,7 +286,50 @@ class GreenGooCreator(RoundGooCreator):
         self.gooCls = GreenGoo
 
         
+class AnchorGooCreator(GooCreator):
+    def __init__(self):
+        super(AnchorGooCreator,self).__init__()
+        self.gooCls = AnchorGoo
+        self.tentativeGoo = None
+        self.wpos = None
 
+    def _canBeAdded(self):
+        #gooRadius = self.tentativeGoo.gooRadius()
+        #body = wh.body_in_bb(self.level.world, pos=self.wpos, roiRadius=gooRadius)
+        #return body is None
+        if self.tentativeGoo is None:
+            return (0,None) 
+        r = self.level.gooGraph.canGooBeAdded(self.tentativeGoo, self.wpos)
+        return r
+    def world_on_touch_down(self, wpos, touch):
+        #Logger.debug("RoundGooCreator: touch  down %.1f %.1f"%wpos ) 
+        self.tentativeGoo = self.gooCls()
+        self.wpos = wpos
+    def world_on_touch_move(self, wpos, wppos, touch):
+        #Logger.debug("RoundGooCreator: touch  move %.1f %.1f"%wpos ) 
+        self.wpos = wpos
+    def world_on_touch_up(self, wpos, touch):
+        #Logger.debug("RoundGooCreator: touch  up %.1f %.1f"%wpos ) 
+        addAs,otherGoosBodies = self._canBeAdded()
+        if addAs == 1:
+            goo = self.gooCls()
+            self.level.addGoo(goo, wpos)
+            if otherGoosBodies is not None:     
+                for ogb in otherGoosBodies:
+                    self.level.connectGoos(goo, ogb.userData)
+        if addAs == 2:
+            b0,b1 = otherGoosBodies
+            self.level.connectGoos(b0.userData, b1.userData)
+        self.tentativeGoo = None
+        self.wpos = None
+
+    def render(self):
+        if self.tentativeGoo is not None and self.wpos is not None:
+            addAs,otherGoos = self._canBeAdded()
+            if addAs <= 1:
+                self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
+            else:
+                pass
 
 
 class KillSelector(WorldManipulator):
@@ -318,6 +353,7 @@ class WorldManipulatorManager(object):
         # goo creators
         self.blackGooCreator = BlackGooCreator()
         self.greenGooCreator = GreenGooCreator()
+        self.anchorGooCreator = AnchorGooCreator()
 
         # set current
         self.wm = self.simpleSelector
@@ -367,6 +403,8 @@ class CreateAndSelectWidget(BoxLayout):
             self.wmManager.wm = self.wmManager.blackGooCreator
         elif objectType == "green-goo":
             self.wmManager.wm = self.wmManager.greenGooCreator
+        elif objectType == "anchor-goo":
+            self.wmManager.wm = self.wmManager.anchorGooCreator
         self.wmManager.passLevelToCurrentWm()
 
 
@@ -393,8 +431,7 @@ class DrawPhysicsWidget(BoxLayout):
     def getScale(self):
         return self.viewer.getScale()
 
-    def update(self, dt):
-        self.viewer.update(dt)
+
 
 
     def init_level(self):
@@ -420,7 +457,6 @@ class WorldOfPhysicsApp(App):
 
     def build(self):
         bc =  DrawPhysicsWidget()
-        #Clock.schedule_interval(bc.update,1.0/50)
 
         bc.init_level()
         return bc
