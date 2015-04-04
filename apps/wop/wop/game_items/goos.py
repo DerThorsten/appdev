@@ -9,7 +9,7 @@ from kivy.core.image import Image as CoreImage
 from game_item import GameItem
 from kivy.logger import Logger
 from kivy.graphics import *
-
+from kivy.core.audio import SoundLoader
 
 
 
@@ -99,8 +99,14 @@ class BlackGoo(RoundGoo):
 
     _gooImg = CoreImage.load("res/black_goo_128.png")
     _gooTexture = _gooImg.texture
+
+    _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
     _gooRadius = 1.0
-    _gooDist = 4.0 * _gooRadius
+    _gooDist = 8.0 * _gooRadius
+
+    @classmethod
+    def playBuildSound(cls):
+       BlackGoo._buildSound.play()
 
     @classmethod
     def gooRadius(cls):
@@ -120,7 +126,11 @@ class GreenGoo(RoundGoo):
     _gooImg = CoreImage.load("res/green_goo_128.png")
     _gooTexture = _gooImg.texture
     _gooRadius = 1.5
-    _gooDist = 4.0 * _gooRadius
+    _gooDist = 8.0 * _gooRadius
+    _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
+    @classmethod
+    def playBuildSound(cls):
+       GreenGoo._buildSound.play()
 
     @classmethod
     def gooRadius(cls):

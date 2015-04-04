@@ -184,13 +184,17 @@ class WorldManipulator(object):
     def __init__(self):
         self.level = None
     def initAfterSelection(self):
-        Logger.debug("WorldManipulator: init wm after it's selction") 
+        #Logger.debug("WorldManipulator: init wm after it's selction") 
+        pass
     def world_on_touch_down(self, wpos, touch):
-        Logger.debug("WorldManipulator: touch  down %.1f %.1f"%wpos ) 
+        #Logger.debug("WorldManipulator: touch  down %.1f %.1f"%wpos ) 
+        pass
     def world_on_touch_move(self, wpos, wppos, touch):
-        Logger.debug("WorldManipulator: touch  move %.1f %.1f"%wpos ) 
+        #Logger.debug("WorldManipulator: touch  move %.1f %.1f"%wpos ) 
+        pass
     def world_on_touch_up(self, wpos, touch):
-        Logger.debug("WorldManipulator: touch  up %.1f %.1f"%wpos ) 
+        #Logger.debug("WorldManipulator: touch  up %.1f %.1f"%wpos ) 
+        pass
 
     def render(self):
         #Logger.debug("WorldManipulator: render" ) 
@@ -201,21 +205,21 @@ class SimpleSelector(WorldManipulator):
         super(SimpleSelector,self).__init__()
         self.hasBody = False
     def world_on_touch_down(self, wpos, touch):
-        Logger.debug("SimpleSelector: touch  down %.1f %.1f"%wpos ) 
+        #Logger.debug("SimpleSelector: touch  down %.1f %.1f"%wpos ) 
         body = wh.body_at_pos(self.level.world, pos=wpos)
         if body is None:
             self.hasBody = False
         else:
             self.hasBody = True
     def world_on_touch_move(self, wpos, wppos, touch):
-        Logger.debug("SimpleSelector: touch  up   %.1f %.1f"%wpos ) 
+        #Logger.debug("SimpleSelector: touch  up   %.1f %.1f"%wpos ) 
         if not self.hasBody :
             d = numpy.array(wpos) - numpy.array(wppos)
             oldOffset = self.level.getOffset()[:]
             self.level.setOffset(oldOffset+d)
 
     def world_on_touch_up(self, wpos, touch):
-        Logger.debug("SimpleSelector: touch  move %.1f %.1f"%wpos ) 
+        #Logger.debug("SimpleSelector: touch  move %.1f %.1f"%wpos ) 
         self.hasBody = False
 
 
@@ -224,11 +228,14 @@ class GooCreator(WorldManipulator):
         super(GooCreator,self).__init__()
 
     def world_on_touch_down(self, wpos, touch):
-        Logger.debug("GooCreator: touch  down %.1f %.1f"%wpos ) 
+        #Logger.debug("GooCreator: touch  down %.1f %.1f"%wpos ) 
+        pass
     def world_on_touch_move(self, wpos, wppos, touch):
-        Logger.debug("GooCreator: touch  move %.1f %.1f"%wpos ) 
+        #Logger.debug("GooCreator: touch  move %.1f %.1f"%wpos ) 
+        pass
     def world_on_touch_up(self, wpos, touch):
-        Logger.debug("GooCreator: touch  up %.1f %.1f"%wpos )
+        #Logger.debug("GooCreator: touch  up %.1f %.1f"%wpos )
+        pass
 
 class RoundGooCreator(GooCreator):
     def __init__(self):
@@ -246,14 +253,14 @@ class RoundGooCreator(GooCreator):
         r = self.level.gooGraph.canGooBeAdded(self.tentativeGoo, self.wpos)
         return r
     def world_on_touch_down(self, wpos, touch):
-        Logger.debug("RoundGooCreator: touch  down %.1f %.1f"%wpos ) 
+        #Logger.debug("RoundGooCreator: touch  down %.1f %.1f"%wpos ) 
         self.tentativeGoo = self.gooCls()
         self.wpos = wpos
     def world_on_touch_move(self, wpos, wppos, touch):
-        Logger.debug("RoundGooCreator: touch  move %.1f %.1f"%wpos ) 
+        #Logger.debug("RoundGooCreator: touch  move %.1f %.1f"%wpos ) 
         self.wpos = wpos
     def world_on_touch_up(self, wpos, touch):
-        Logger.debug("RoundGooCreator: touch  up %.1f %.1f"%wpos ) 
+        #Logger.debug("RoundGooCreator: touch  up %.1f %.1f"%wpos ) 
         addAs,otherGoosBodies = self._canBeAdded()
         if addAs == 1:
             goo = self.gooCls()
@@ -261,6 +268,9 @@ class RoundGooCreator(GooCreator):
             if otherGoosBodies is not None:     
                 for ogb in otherGoosBodies:
                     self.level.connectGoos(goo, ogb.userData)
+        if addAs == 2:
+            b0,b1 = otherGoosBodies
+            self.level.connectGoos(b0.userData, b1.userData)
         self.tentativeGoo = None
         self.wpos = None
 
@@ -320,13 +330,13 @@ class WorldManipulatorManager(object):
         self.wm.level = self.level
 
     def world_on_touch_down(self, wpos, touch):
-        Logger.debug("WorldManipulatorManager: touch  up %.1f %.1f"%wpos ) 
+        #Logger.debug("WorldManipulatorManager: touch  up %.1f %.1f"%wpos ) 
         self.wm.world_on_touch_down(wpos, touch)
     def world_on_touch_move(self, wpos, wppos, touch):
-        Logger.debug("WorldManipulatorManager: touch  up %.1f %.1f"%wpos ) 
+        #Logger.debug("WorldManipulatorManager: touch  up %.1f %.1f"%wpos ) 
         self.wm.world_on_touch_move(wpos,wppos, touch)
     def world_on_touch_up(self, wpos, touch):
-        Logger.debug("WorldManipulatorManager: touch  up %.1f %.1f"%wpos ) 
+        #Logger.debug("WorldManipulatorManager: touch  up %.1f %.1f"%wpos ) 
         self.wm.world_on_touch_up(wpos, touch)
 
     def render(self):

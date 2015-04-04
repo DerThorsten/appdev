@@ -7,7 +7,7 @@ from kivy.logger import Logger
 import operator
 import world_helper as wh
 import debug_draw
-
+import math
 from wop.game_items import *
 
 class FindAllGoos(Box2D.b2QueryCallback):
@@ -37,6 +37,40 @@ class FindAllGoos(Box2D.b2QueryCallback):
         sortedBodies=[k for (k,v) in sorted(d.items(), key=lambda (k, v): v)]
         return self.dists, sortedBodies
 
+
+def distToLine(line, p):
+    def dist(x1,y1, x2,y2, x3,y3): # x3,y3 is the point
+        px = x2-x1
+        py = y2-y1
+
+        something = px*px + py*py
+
+        u =  ((x3 - x1) * px + (y3 - y1) * py) / float(something)
+
+        if u > 1:
+            u = 1
+        elif u < 0:
+            u = 0
+
+        x = x1 + u * px
+        y = y1 + u * py
+
+        dx = x - x3
+        dy = y - y3
+
+        # Note: If the actual distance does not matter,
+        # if you only want to compare what this function
+        # returns to other results of this function, you
+        # can just return the squared distance instead
+        # (i.e. remove the sqrt) to gain a little performance
+
+        dist = math.sqrt(dx*dx + dy*dy)
+
+        return dist
+
+    return dist(line[0][0],line[0][1],
+                line[1][0],line[1][1],
+                p[0],p[1])
 
 class GooGraph(nx.Graph):
     def __init__(self, level):
@@ -69,17 +103,24 @@ class GooGraph(nx.Graph):
                 return (1,(b0,))
             else :
                 return (0,None)
-        elif nOther == 2:
-            # get closest two bodies
-            b0 = sortedBodies[0]
-            b1 = sortedBodies[1]
-            return (1,(b0,b1))
         else :
-            # get closest two bodies
             b0 = sortedBodies[0]
             b1 = sortedBodies[1]
-            b2 = sortedBodies[2]
-            return (1,(b0,b1,b2))  
+            g0 = b0.userData
+            g1 = b1.userData
+
+            if self.has_edge(g0,g1):
+                print "has edge"
+            else:
+                print "has no edge"
+                lineDist = distToLine((b0.position,b1.position), pos)
+                print "line dist", lineDist
+
+                if lineDist < goo.gooRadius()/2.0:
+                    print "add as edge"
+                    return (2, (b0, b1))
+
+            return (1,sortedBodies[:min(nOther,5)])  
 
 
 
@@ -150,6 +191,7 @@ class Level(object):
         pass
 
     def addGoo(self, goo, pos):
+        goo.playBuildSound()
         goo.addToWorld(self.world, pos)
         self.gooGraph.add_node(goo)
 
@@ -162,6 +204,8 @@ class Level(object):
            anchorB=gooB.body.position
         )
         j=self.world.CreateJoint(dfn)
+        j.length = gooA.gooDistance()
+        print j
         self.gooGraph.add_edge(gooA, gooB, joint=j)
         
     def render(self):
