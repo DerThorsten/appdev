@@ -11,9 +11,10 @@ import math
 from wop.game_items import *
 
 class FindAllGoos(Box2D.b2QueryCallback):
-    def __init__(self, pos, maxDist): 
+    def __init__(self, pos, minDist, maxDist): 
         super(FindAllGoos, self).__init__()
         self.pos = pos
+        self.minDist = minDist
         self.maxDist = maxDist
         self.dists  = dict()
     def ReportFixture(self, fixture):
@@ -23,10 +24,9 @@ class FindAllGoos(Box2D.b2QueryCallback):
             if(isinstance(ud,Goo)):
                 if body not in self.dists:
                     d = self.pos - body.position
-                    Logger.debug("D %f"%d.length)
-                    if d.length<=self.maxDist:
-                        Logger.debug("DDDDD %f"%d.length)
-                        self.dists[body] = d.length
+                    d = d.length
+                    if d>=self.minDist and d<=self.maxDist:
+                        self.dists[body] = d
         return True
 
     def sortedBodies(self):
@@ -78,6 +78,8 @@ class GooGraph(nx.Graph):
         self.level = level
         self.world = level.world
     def canGooBeAdded(self, goo, pos):
+
+        gParam = goo.param()
         nGoos = self.number_of_nodes()
         #Logger.debug("GOO GRAPH: #goos %d " %nGoos)
         gooDist = goo.gooDistance()*1.2
@@ -88,14 +90,14 @@ class GooGraph(nx.Graph):
         else :
             pos = b2Vec2(*pos)
             # find all goos in range
-            query = FindAllGoos(pos, gooDist)
+            query = FindAllGoos(pos, minDist=gParam.minGooDist,
+                                maxDist=gParam.maxGooDist)
             aabb = b2AABB(lowerBound=pos-(gooDist, gooDist), upperBound=pos+(gooDist, gooDist))
             self.world.QueryAABB(query, aabb)
 
         dists, sortedBodies = query.sortedBodies()
-        Logger.debug("found %d"%len(dists))
         nOther = len(dists)
-        if nOther==0:
+        if nOther<gParam.minBuildEdges:
             return (0,None)
         elif nOther == 1:
             if nGoos==1:
@@ -109,18 +111,13 @@ class GooGraph(nx.Graph):
             g0 = b0.userData
             g1 = b1.userData
 
-            if self.has_edge(g0,g1):
-                print "has edge"
-            else:
-                print "has no edge"
-                lineDist = distToLine((b0.position,b1.position), pos)
-                print "line dist", lineDist
+            if gParam.canBeAddedAsJoint:
+                if not self.has_edge(g0,g1):
+                    lineDist = distToLine((b0.position,b1.position), pos)
+                    if lineDist < gParam.addAsJointDist:
+                        return (2, (b0, b1))
 
-                if lineDist < goo.gooRadius()/2.0:
-                    print "add as edge"
-                    return (2, (b0, b1))
-
-            return (1,sortedBodies[:min(nOther,5)])  
+            return (1,sortedBodies[:min(nOther,gParam.maxBuildEdges)])  
 
 
 
@@ -153,10 +150,6 @@ class Level(object):
     def world_on_touch_down(self, wpos, touch):
         #Logger.debug("Level: touch down %.1f %.1f"%wpos ) 
         self.wmManager.world_on_touch_down(wpos, touch)
-        # find clicked bodies
-        body = wh.body_at_pos(self.world, pos=wpos)
-        if body is not None:
-            print "found body ",body
     def world_on_touch_move(self, wpos, wppos, touch):
         #Logger.debug("Level: touch move %.1f %.1f"%wpos ) 
         self.wmManager.world_on_touch_move(wpos, wppos, touch)
@@ -196,16 +189,18 @@ class Level(object):
         self.gooGraph.add_node(goo)
 
     def connectGoos(self, gooA, gooB):
+        # take param from first goo (so far)
+        gParam  = gooA.param()
         dfn=b2DistanceJointDef(
-           frequencyHz=2.0,
-           dampingRatio=0.1,
+           frequencyHz=gParam.frequencyHz,
+           dampingRatio=gParam.dampingRatio,
            bodyA=gooA.body,bodyB=gooB.body,
            anchorA=gooA.body.position,
            anchorB=gooB.body.position
         )
         j=self.world.CreateJoint(dfn)
-        j.length = gooA.gooDistance()
-        print j
+        if gParam.autoExpanding:
+            j.length = gParam.expandingDist
         self.gooGraph.add_edge(gooA, gooB, joint=j)
         
     def render(self):

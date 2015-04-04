@@ -14,6 +14,52 @@ from kivy.core.audio import SoundLoader
 
 
 
+class GooParam(object):
+    def __init__(self,
+        shape = 'ellipse', 
+        gooSize = (2.0, 2.0),
+        allowsRotation = True,
+        friction = 1000.0,
+        density = 1.0,
+        gravityMultiplier = 1.0,
+        minGooDist = 4.0,
+        maxGooDist = 8.0,
+        autoExpanding = True,
+        expandingDist = None,
+        frequencyHz = 2.0,
+        dampingRatio = 0.1,
+        minBuildEdges = 1,
+        maxBuildEdges = 5,
+        canBeAddedAsJoint = True,
+        addAsJointDist = None,
+        removable = False
+    ):
+
+        # graph Param
+        self.shape = shape
+        self.gooSize = gooSize
+        self.allowsRotation = allowsRotation
+        self.friction = friction
+        self.density = density
+        self.gravityMultiplier = gravityMultiplier
+        self.minGooDist = minGooDist
+        self.maxGooDist = maxGooDist
+        self.autoExpanding = autoExpanding
+        self.expandingDist = expandingDist
+        if self.expandingDist is None:
+            self.expandingDist = self.maxGooDist
+
+        self.frequencyHz = frequencyHz
+        self.dampingRatio = dampingRatio
+        self.minBuildEdges = minBuildEdges
+        self.maxBuildEdges = maxBuildEdges
+        self.canBeAddedAsJoint = canBeAddedAsJoint
+        self.addAsJointDist = addAsJointDist
+        if self.addAsJointDist is None:
+            self.addAsJointDist = min(*self.gooSize)/2.0
+        self.removable = removable
+
+
 
 
 class Goo(GameItem):
@@ -96,7 +142,7 @@ class RoundGoo(Goo):
 
 class BlackGoo(RoundGoo):
     print __file__
-
+    _gooParam = GooParam()
     _gooImg = CoreImage.load("res/black_goo_128.png")
     _gooTexture = _gooImg.texture
 
@@ -104,9 +150,14 @@ class BlackGoo(RoundGoo):
     _gooRadius = 1.0
     _gooDist = 8.0 * _gooRadius
 
+
     @classmethod
     def playBuildSound(cls):
        BlackGoo._buildSound.play()
+
+    @classmethod
+    def param(cls):
+       return BlackGoo._gooParam
 
     @classmethod
     def gooRadius(cls):
@@ -125,13 +176,16 @@ class GreenGoo(RoundGoo):
     print __file__
     _gooImg = CoreImage.load("res/green_goo_128.png")
     _gooTexture = _gooImg.texture
+    _gooParam = GooParam()
     _gooRadius = 1.5
     _gooDist = 8.0 * _gooRadius
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
     @classmethod
     def playBuildSound(cls):
        GreenGoo._buildSound.play()
-
+    @classmethod
+    def param(cls):
+       return GreenGoo._gooParam
     @classmethod
     def gooRadius(cls):
         return GreenGoo._gooRadius

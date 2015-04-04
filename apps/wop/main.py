@@ -343,12 +343,6 @@ class WorldManipulatorManager(object):
         return self.wm.render()
 
 
-
-SELECT = 1
-CREATE_GOOS = 2
-CREATE_BLACK_GOOS = 1
-CREATE_GREEN_GOOS = 2
-
 class CreateAndSelectWidget(BoxLayout):
 
     selectObjectButton = ObjectProperty(None)
@@ -363,14 +357,12 @@ class CreateAndSelectWidget(BoxLayout):
         self.wmManager = WorldManipulatorManager()
 
     def on_release_selector_button(self, selectorType):
-        Logger.debug("Selector Button: %s "%selectorType)
         if selectorType == "select":
             self.wmManager.wm = self.wmManager.simpleSelector
         elif selectorType == "kill":
             self.wmManager.wm = self.wmManager.killSelector
         self.wmManager.passLevelToCurrentWm()
     def on_release_creator_button(self , objectType):
-        Logger.debug("Creator Button: %s "%objectType)
         if objectType == "black-goo":
             self.wmManager.wm = self.wmManager.blackGooCreator
         elif objectType == "green-goo":

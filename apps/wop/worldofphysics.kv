@@ -22,7 +22,6 @@
 
 
 <CreateAndSelectWidget>:
-    size_hint: (0.15,1)
     orientation: "vertical"
     TabbedPanel:
         tab_pos: "left_mid"
@@ -40,13 +39,54 @@
                     text: "kill"
                     on_release: root.on_release_selector_button("kill")
         TabbedPanelItem:
-            text: "create"
+            text: "magic shapes"
+            BoxLayout:
+                orientation: "vertical"
+                Button:
+                    id: selectMagicLineButton
+                    text: "magic\nline"
+                    #on_release: root.on_release_selector_button("select")
+                Button:
+                    id: selectMagicShapeButton
+                    text: "magic\nshape"
+                    #on_release: root.on_release_selector_button("kill")
+        TabbedPanelItem:
+            text: "shapes"
+            BoxLayout:
+                orientation: "vertical"
+                Button:
+                    id: selectSmallBoxButton
+                    text: "small\n Box"
+                    #on_release: root.on_release_selector_button("select")
+                Button:
+                    id: selectMediumBoxButton
+                    text: "medium\n Box"
+                    #on_release: root.on_release_selector_button("select")
+                Button:
+                    id: selectBigBoxButton
+                    text: "big\n Box"
+                    #on_release: root.on_release_selector_button("select")
+                Button:
+                    id: selectSmallCircleButton
+                    text: "small\n Circle"
+                    #on_release: root.on_release_selector_button("select")
+                Button:
+                    id: selectMediumCircleButton
+                    text: "medium\n Circle"
+                    #on_release: root.on_release_selector_button("select")
+                Button:
+                    id: selectBigCircleButton
+                    text: "big\n Box"
+                    #on_release: root.on_release_selector_button("select")
+
+        TabbedPanelItem:
+            text: "goos"
             default_tab:True
             BoxLayout:
                 orientation: "vertical"
                 Button:
                     id: blackGooButton
-                    text: "Hello"
+                    text: "BG"
                     on_release: root.on_release_creator_button("black-goo")
                     Image:
                         size: (self.parent.size[0], self.parent.size[1])
@@ -57,13 +97,42 @@
 
                 Button:
                     id: greenGooButton
-                    text: "Hello"
+                    text: "GB"
                     on_release: root.on_release_creator_button("green-goo")
                     Image:
                         size: (self.parent.size[0], self.parent.size[1])
                         y: self.parent.y #+ self.parent.height - 30
                         x: self.parent.x
                         source: 'res/green_goo_128.png'
+
+                Button:
+                    id: flyGooButton
+                    text: "fly\nGoo"
+                    #on_release: root.on_release_creator_button("green-goo")
+                    #Image:
+                    #    size: (self.parent.size[0], self.parent.size[1])
+                    #    y: self.parent.y #+ self.parent.height - 30
+                    #    x: self.parent.x
+                    #    source: 'res/green_goo_128.png'
+
+                Button:
+                    id: anchorGooButton
+                    text: "Anchor\nGoo"
+                    #on_release: root.on_release_creator_button("green-goo")
+                    #Image:
+                    #    size: (self.parent.size[0], self.parent.size[1])
+                    #    y: self.parent.y #+ self.parent.height - 30
+                    #    x: self.parent.x
+                    #    source: 'res/green_goo_128.png'
+                Button:
+                    id: wheelGooButton
+                    text: "Wheel\nGoo"
+                    #on_release: root.on_release_creator_button("green-goo")
+                    #Image:
+                    #    size: (self.parent.size[0], self.parent.size[1])
+                    #    y: self.parent.y #+ self.parent.height - 30
+                    #    x: self.parent.x
+                    #    source: 'res/green_goo_128.png'
 
 
 <DrawPhysicsWidget>:
@@ -78,7 +147,7 @@
 
         CreateAndSelectWidget:
             id: createAndSelectWidget
-            size_hint: (0.2, 1)              
+            size_hint: (0.15, 1)              
             
         BoxLayout:
             orientation: "vertical"
