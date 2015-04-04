@@ -1,31 +1,131 @@
 import numpy
+import networkx as nx
 from Box2D import *
 from kivy.clock import Clock
 from debug_draw import CanvasDraw
 from kivy.logger import Logger
-
+import operator
 import world_helper as wh
+import debug_draw
+
+from wop.game_items import *
+
+class FindAllGoos(Box2D.b2QueryCallback):
+    def __init__(self, pos, maxDist): 
+        super(FindAllGoos, self).__init__()
+        self.pos = pos
+        self.maxDist = maxDist
+        self.dists  = dict()
+    def ReportFixture(self, fixture):
+        body = fixture.body
+        if body.type == b2_dynamicBody:
+            ud = body.userData 
+            if(isinstance(ud,Goo)):
+                if body not in self.dists:
+                    d = self.pos - body.position
+                    Logger.debug("D %f"%d.length)
+                    if d.length<=self.maxDist:
+                        Logger.debug("DDDDD %f"%d.length)
+                        self.dists[body] = d.length
+        return True
+
+    def sortedBodies(self):
+        #sortedBodies = sorted(self.dists.items(), key=operator.itemgetter(1))
+        d = self.dists
+
+        #sortedBodies = sorted(d, key=lambda k: d[k][1])
+        sortedBodies=[k for (k,v) in sorted(d.items(), key=lambda (k, v): v)]
+        return self.dists, sortedBodies
+
+
+class GooGraph(nx.Graph):
+    def __init__(self, level):
+        super(GooGraph, self).__init__()
+        self.level = level
+        self.world = level.world
+    def canGooBeAdded(self, goo, pos):
+        nGoos = self.number_of_nodes()
+        #Logger.debug("GOO GRAPH: #goos %d " %nGoos)
+        gooDist = goo.gooDistance()*1.2
+        if nGoos==0:
+            return (1,None)
+        #if nGoos == 1:
+        #    return (1,None)
+        else :
+            pos = b2Vec2(*pos)
+            # find all goos in range
+            query = FindAllGoos(pos, gooDist)
+            aabb = b2AABB(lowerBound=pos-(gooDist, gooDist), upperBound=pos+(gooDist, gooDist))
+            self.world.QueryAABB(query, aabb)
+
+        dists, sortedBodies = query.sortedBodies()
+        Logger.debug("found %d"%len(dists))
+        nOther = len(dists)
+        if nOther==0:
+            return (0,None)
+        elif nOther == 1:
+            if nGoos==1:
+                b0 = sortedBodies[0]
+                return (1,(b0,))
+            else :
+                return (0,None)
+        elif nOther == 2:
+            # get closest two bodies
+            b0 = sortedBodies[0]
+            b1 = sortedBodies[1]
+            return (1,(b0,b1))
+        else :
+            # get closest two bodies
+            b0 = sortedBodies[0]
+            b1 = sortedBodies[1]
+            b2 = sortedBodies[2]
+            return (1,(b0,b1,b2))  
+
+
+
 
 class Level(object):
-    def __init__(self, gameRender):
+    def __init__(self,world, gameRender):
+        self.world = world
         self.gameRender = gameRender
+        self.debugDraw = debug_draw.DebugDraw(world=None,
+                            scale=self.gameRender.scale, 
+                            offset=self.gameRender.offset)
 
-
+        self.wmManager = None
+        
+        self.gooGraph = GooGraph(self)
     ###############################
     # events
     ###############################
 
+    def setScale(self, scale):
+        self.gameRender.scale = scale
+    def getScale(self):
+        return self.gameRender.scale
+
+    def setOffset(self, offset):
+        self.gameRender.offset = offset
+    def getOffset(self):
+        return self.gameRender.offset   
+
     def world_on_touch_down(self, wpos, touch):
-        Logger.debug("Level: touch down %.1f %.1f"%wpos ) 
+        #Logger.debug("Level: touch down %.1f %.1f"%wpos ) 
+        self.wmManager.world_on_touch_down(wpos, touch)
         # find clicked bodies
         body = wh.body_at_pos(self.world, pos=wpos)
         if body is not None:
             print "found body ",body
+    def world_on_touch_move(self, wpos, wppos, touch):
+        #Logger.debug("Level: touch move %.1f %.1f"%wpos ) 
+        self.wmManager.world_on_touch_move(wpos, wppos, touch)
 
-    def world_on_touch_move(self, wpos, touch):
-        Logger.debug("Level: touch move %.1f %.1f"%wpos ) 
     def world_on_touch_up(self, wpos, touch):
-        Logger.debug("Level: touch  up %.1f %.1f"%wpos ) 
+        ##Logger.debug("Level: touch  up %.1f %.1f"%wpos ) 
+        self.wmManager.world_on_touch_up(wpos, touch)
+
+    def set_wm_manager(self, wmManager):
+        self.wmManager = wmManager
 
     def initPhysics(self):
         self.killBoxVerts = boxVertices(*self.roi)
@@ -49,9 +149,45 @@ class Level(object):
     def postUpdate(self, dt):
         pass
 
-    def render(self):
-        self.render_level()
+    def addGoo(self, goo, pos):
+        goo.addToWorld(self.world, pos)
+        self.gooGraph.add_node(goo)
 
+    def connectGoos(self, gooA, gooB):
+        dfn=b2DistanceJointDef(
+           frequencyHz=2.0,
+           dampingRatio=0.1,
+           bodyA=gooA.body,bodyB=gooB.body,
+           anchorA=gooA.body.position,
+           anchorB=gooB.body.position
+        )
+        j=self.world.CreateJoint(dfn)
+        self.gooGraph.add_edge(gooA, gooB, joint=j)
+        
+    def render(self):
+        gr = self.gameRender
+
+
+        self.debugDraw.scale = gr.scale
+        self.debugDraw.offset = gr.offset
+        self.debugDraw.world = self.world
+        
+        # add debug draw to render queue
+        gr.add_render_item(self.debugDraw.debugDraw,z=0)
+        
+        # add level render to render queue
+        gr.add_render_item(self.render_level,z=1)
+
+        # render goos
+        def renderAllGoos():
+            for goo in self.gooGraph.nodes():
+                goo.render(self)
+        gr.add_render_item(renderAllGoos,z=2)
+
+        # builder/adder tentative render
+        gr.add_render_item(self.wmManager.render, z=3)
+        # do the actual rendering
+        gr.render()
 
 
 def boxVertices(p0, p1, shiftOrigin=True):
@@ -64,14 +200,10 @@ def boxVertices(p0, p1, shiftOrigin=True):
 
 class SimpleLevel(Level):
     def __init__(self, gameRender):
-        super(SimpleLevel, self).__init__(gameRender=gameRender)
+        super(SimpleLevel, self).__init__(world= b2World((0.0,-10.0)),gameRender=gameRender)
 
-        self.scale = 1.0
-        self.offset = numpy.array([0,0])
-        self.world = b2World((0.0,-10.0))
 
         self.roi = (-5,-5), (45, 45)
-
         self.s = 40
 
     def initPhysics(self):
@@ -98,7 +230,7 @@ class SimpleLevel(Level):
 
     def render_level(self):
         gr = self.gameRender
-        canvasDraw =CanvasDraw(gr.canvas, gr.offset, gr.scale)
+        canvasDraw =CanvasDraw( gr.offset, gr.scale)
         canvasDraw.drawSegment((0,0),(0,self.s),(1,1,1))
         canvasDraw.drawSegment((0,self.s),(self.s,self.s),(1,1,1))
         canvasDraw.drawSegment((self.s,self.s),(self.s,0),(1,1,1))

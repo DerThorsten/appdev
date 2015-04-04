@@ -4,8 +4,7 @@ from kivy.graphics import *
 
 
 class CanvasDraw(object):    
-    def __init__(self,canvas, offset, scale):
-        self.canvas = canvas
+    def __init__(self, offset, scale):
         self.offset = offset
         self.scale = scale
 
@@ -13,14 +12,14 @@ class CanvasDraw(object):
         center = (numpy.array(center)-radius+self.offset)*self.scale
         size = numpy.array([radius*2,radius*2])*self.scale
         #print "color",color
-        with self.canvas:
-            e = Ellipse(pos=center,size=size,color=Color(*color))
+        #with self.canvas:
+        e = Ellipse(pos=center,size=size,color=Color(*color))
 
     def drawSegment(self,v1, v2, color):
         v1 = (numpy.array(v1)+self.offset)*self.scale
         v2 = (numpy.array(v2)+self.offset)*self.scale
-        with self.canvas:
-            Line(points=[v1[0],v1[1],v2[0],v2[1]], width=1.5, color=Color(*color))
+        #with self.canvas:
+        Line(points=[v1[0],v1[1],v2[0],v2[1]], width=1.5, color=Color(*color))
 
     def drawSolidPolygon(self,vertices, vertexCount, color):
         vertices = numpy.array(vertices)
@@ -35,38 +34,36 @@ class CanvasDraw(object):
         for i in range(vertices.shape[0]):
             v.extend([vertices[i,0],vertices[i,1],0,0])
             indices.append(i)
-        with self.canvas:
-            Mesh(vertices=v,indices=indices,mode='triangle_fan',color=Color(*color))
+        #with self.canvas:
+        Mesh(vertices=v,indices=indices,mode='triangle_fan',color=Color(*color))
 
 
 
 class DebugDraw(CanvasDraw):
-    def __init__(self, world, widget, offset, scale):
-        super(DebugDraw, self).__init__(widget.canvas, offset, scale)
+    def __init__(self, world, offset, scale):
+        super(DebugDraw, self).__init__(offset, scale)
         self.world = world
-        self.widget = widget
 
     def debugDraw(self):
+        if self.world is not None:
+            for body in self.world.bodies:
+                fixtures = body.fixtures
+                btype = body.type
+                xf  =  body.transform
+                for f in fixtures:
+                    if body.active==False :
+                        self.drawShape(f, xf, (0.5, 0.5, 0.3) )
+                    elif btype == b2_staticBody:
+                        self.drawShape(f, xf, (0.5, 0.9, 0.5) )
+                    elif btype == b2_kinematicBody:
+                        self.drawShape(f, xf, (0.5, 0.5, 0.5) )
+                    elif body.awake==False:
+                        self.drawShape(f, xf, (0.6, 0.6, 0.6) )
+                    else :
+                        self.drawShape(f, xf, (0.9, 0.7, 0.7) )
 
-        self.canvas.clear()
-        for body in self.world.bodies:
-            fixtures = body.fixtures
-            btype = body.type
-            xf  =  body.transform
-            for f in fixtures:
-                if body.active==False :
-                    self.drawShape(f, xf, (0.5, 0.5, 0.3) )
-                elif btype == b2_staticBody:
-                    self.drawShape(f, xf, (0.5, 0.9, 0.5) )
-                elif btype == b2_kinematicBody:
-                    self.drawShape(f, xf, (0.5, 0.5, 0.5) )
-                elif body.awake==False:
-                    self.drawShape(f, xf, (0.6, 0.6, 0.6) )
-                else :
-                    self.drawShape(f, xf, (0.9, 0.7, 0.7) )
-
-        for joint in self.world.joints:
-            self.drawJoint(joint)
+            for joint in self.world.joints:
+                self.drawJoint(joint)
 
         
 

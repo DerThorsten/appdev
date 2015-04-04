@@ -34,9 +34,11 @@
                 Button:
                     id: selectObjectButton
                     text: "->"
+                    on_release: root.on_release_selector_button("select")
                 Button:
                     id: killObjectButton
                     text: "kill"
+                    on_release: root.on_release_selector_button("kill")
         TabbedPanelItem:
             text: "create"
             default_tab:True
@@ -45,37 +47,23 @@
                 Button:
                     id: blackGooButton
                     text: "Hello"
+                    on_release: root.on_release_creator_button("black-goo")
                     Image:
                         size: (self.parent.size[0], self.parent.size[1])
                         y: self.parent.y
                         x: self.parent.x
                         source: 'res/black_goo_128.png'
+
+
                 Button:
                     id: greenGooButton
                     text: "Hello"
+                    on_release: root.on_release_creator_button("green-goo")
                     Image:
                         size: (self.parent.size[0], self.parent.size[1])
                         y: self.parent.y #+ self.parent.height - 30
                         x: self.parent.x
                         source: 'res/green_goo_128.png'
-                Button:
-                    id: redGooButton
-                    text: "Hello"
-                    Image:
-                        size: (self.parent.size[0], self.parent.size[1])
-                        y: self.parent.y #+ self.parent.height - 30
-                        x: self.parent.x
-                        source: 'res/red_goo_128.png'
-                Button:
-                    id: pinkGooButton
-                    text: "Hello"
-                    Image:
-                        size: (self.parent.size[0], self.parent.size[1])
-                        y: self.parent.y #+ self.parent.height - 30
-                        x: self.parent.x
-                        source: 'res/pink_goo_128.png'
-            
-
 
 
 <DrawPhysicsWidget>:
@@ -111,10 +99,11 @@
                 Button:
                     id: zoomOutButton
                     text: "-"
+                    on_release: root.zoomOut()
                 Button:
                     id: zoomInButton
                     text: "+"
-
+                    on_release: root.zoomIn()
 
 
 
