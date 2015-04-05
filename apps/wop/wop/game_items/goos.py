@@ -24,6 +24,7 @@ class GooParam(object):
         gravityMultiplier = 1.0,
         minGooDist = 4.0,
         maxGooDist = 8.0,
+        addIfAnyToClose = True,
         autoExpanding = True,
         expandingDist = None,
         frequencyHz = 2.0,
@@ -32,7 +33,8 @@ class GooParam(object):
         maxBuildEdges = 5,
         canBeAddedAsJoint = True,
         addAsJointDist = None,
-        removable = False
+        removable = False,
+        connectsNonGoos = False
     ):
 
         # graph Param
@@ -44,6 +46,7 @@ class GooParam(object):
         self.gravityMultiplier = gravityMultiplier
         self.minGooDist = minGooDist
         self.maxGooDist = maxGooDist
+        self.addIfAnyToClose = addIfAnyToClose
         self.autoExpanding = autoExpanding
         self.expandingDist = expandingDist
         if self.expandingDist is None:
@@ -56,8 +59,9 @@ class GooParam(object):
         self.canBeAddedAsJoint = canBeAddedAsJoint
         self.addAsJointDist = addAsJointDist
         if self.addAsJointDist is None:
-            self.addAsJointDist = min(*self.gooSize)/2.0
+            self.addAsJointDist = min(*self.gooSize)
         self.removable = removable
+        self.connectsNonGoos = connectsNonGoos
 
 
 
@@ -78,7 +82,6 @@ class Goo(GameItem):
     def renderJoint(self,gr, joint, otherGoo):
         pa = joint.anchorA
         pb = joint.anchorB
-        Logger.debug("RoundGoo: render joint")
         canvasDraw =CanvasDraw( gr.offset, gr.scale)
         canvasDraw.drawSegment(pa, pb, color=(1,1,1),width=1.5)
 
@@ -165,7 +168,6 @@ class BlackGoo(RoundGoo):
     def renderJoint(self,gr, joint, otherGoo):
         pa = joint.anchorA
         pb = joint.anchorB
-        Logger.debug("RoundGoo: render joint")
         canvasDraw =CanvasDraw( gr.offset, gr.scale)
         canvasDraw.drawSegment(pa, pb, color=(0.2,0.2,0.2),width=3)
 
@@ -202,7 +204,6 @@ class GreenGoo(RoundGoo):
     def renderJoint(self,gr, joint, otherGoo):
         pa = joint.anchorA
         pb = joint.anchorB
-        Logger.debug("RoundGoo: render joint")
         canvasDraw =CanvasDraw( gr.offset, gr.scale)
         canvasDraw.drawSegment(pa, pb, color=(0.2,0.7,0.2),width=3)
 
@@ -232,7 +233,7 @@ class GreenGoo(RoundGoo):
 
 class AnchorGoo(Goo):
     
-    _gooParam = GooParam(minBuildEdges=1,gooSize=(3,3), density=3000,
+    _gooParam = GooParam(minBuildEdges=1,gooSize=(3,3), density=1000,
                          autoExpanding=False)
     _gooImg = CoreImage.load("res/amboss_goo_128.png")
     _gooTexture = _gooImg.texture
@@ -325,4 +326,4 @@ class AnchorGoo(Goo):
     def localAnchor(self):
         param = self.param()
         sx,sy = param.gooSize
-        return (0.5*sx, (4.0/5.0)*sy)
+        return (0.5*sx, (4.5/5.0)*sy)

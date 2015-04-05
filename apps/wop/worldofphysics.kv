@@ -103,7 +103,7 @@
                         y: self.parent.y #+ self.parent.height - 30
                         x: self.parent.x
                         source: 'res/green_goo_128.png'
-                        
+
                 Button:
                     id: anchorGooButton
                     #text: "Anchor\nGoo"
@@ -175,27 +175,66 @@
                     text: "+"
                     on_release: root.zoomIn()
 
+                Button:
+                    id: menuButton
+                    text: "menu"
+                    #on_release: root.zoomIn()
 
 
-<MenuScreen>:
-    BoxLayout:
-        Button:
-            text: 'Goto settings'
-            on_press:
-                root.manager.transition.direction = 'left'
-                parent._screen_manager.current = 'settings'
-        Button:
-            text: 'Quit'
 
-<SettingsScreen>:
-    BoxLayout:
-        Button:
-            text: 'My settings button'
-        Button:
-            text: 'Back to menu'
-            on_press:
-                root.manager.transition.direction = 'right'
-                root.manager.current = 'menu'
+<LevelSelectorWidget>:
+    Button:
+        text: "level 1"
+        on_press: root.screen_manager.current = 'level_render_screen'
+    Button:
+        text: "level 2"
+    Button:
+        text: "level 3"
+    Button:
+        text: "back"
+        on_press: root.screen_manager.current = 'main_menu_screen'
+
+<MainSettingWidget>:
+    orientation: 'vertical'
+    Button:
+        text: "back"
+        on_press: root.screen_manager.current = 'main_menu_screen'
+
+
+<MainMenuWidget>:
+    orientation: 'vertical'
+    Button:
+        text: "Play"
+        on_press: root.screen_manager.current = 'level_selector_screen'
+    Button:
+        text: "Settings"
+        on_press: root.screen_manager.current = 'main_settings_screen'
+    Button:
+        text: "Exit"
+
+
+<ScreenSelectorWidget>:
+    drawPysicsWidget: drawPysicsWidget
+    screen_manager: screen_manager
+    ScreenManager:
+        id: screen_manager
+
+        Screen:
+            name: 'main_menu_screen'
+            MainMenuWidget:
+                screen_manager: screen_manager
+        Screen:
+            name: 'main_settings_screen'
+            MainSettingWidget:
+                screen_manager: screen_manager
+        Screen:
+            name: 'level_selector_screen'
+            LevelSelectorWidget:
+                screen_manager: screen_manager
+        Screen:
+            name: 'level_render_screen'
+            DrawPhysicsWidget:
+                id: drawPysicsWidget
 
 
 <TheGame>:

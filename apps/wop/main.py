@@ -429,6 +429,7 @@ class DrawPhysicsWidget(BoxLayout):
         self.viewer.setScale(scale)
         
     def getScale(self):
+        print self.pos,self.size
         return self.viewer.getScale()
 
 
@@ -452,14 +453,35 @@ class DrawPhysicsWidget(BoxLayout):
 
 
 
+class LevelSelectorWidget(BoxLayout):
+    screen_manager = ObjectProperty(None)
+
+
+class MainMenuWidget(BoxLayout):
+    pass
+
+class MainSettingWidget(BoxLayout):
+    pass
+
+class ScreenSelectorWidget(BoxLayout):
+    drawPysicsWidget = ObjectProperty(None)
+    screen_manager = ObjectProperty(None)
+    def __init__(self,*args,**kwargs):
+        super(ScreenSelectorWidget,self).__init__(*args,**kwargs)
+
 
 class WorldOfPhysicsApp(App):
 
     def build(self):
-        bc =  DrawPhysicsWidget()
+        if False:
+            bc =  DrawPhysicsWidget()
 
-        bc.init_level()
-        return bc
-        #return TheGame()
+            bc.init_level()
+            return bc
+            #return TheGame()
+        else:
+            screenSelectorWidget = ScreenSelectorWidget()
+            screenSelectorWidget.drawPysicsWidget.init_level()
+            return screenSelectorWidget
 if __name__ == '__main__':
     WorldOfPhysicsApp().run()
