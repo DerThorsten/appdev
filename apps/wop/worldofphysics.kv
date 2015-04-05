@@ -2,9 +2,9 @@
 
 
 <GameRendererWidget>:
-    size_hint: (1, 1)
+    #size_hint: (1, 1)
     BoxLayout:
-        size_hint: (1, 1)
+        #size_hint: (1, 1)
         orientation: "horizontal"       
 
 
@@ -137,6 +137,7 @@
 
 
 <DrawPhysicsWidget>:
+    size_hint: (1, 1)
     viewer:viewer
     zoomOutButton: zoomOutButton
     zoomInButton: zoomInButton
@@ -233,6 +234,7 @@
                 screen_manager: screen_manager
         Screen:
             name: 'level_render_screen'
+            on_enter: drawPysicsWidget.viewer.on_enter()
             DrawPhysicsWidget:
                 id: drawPysicsWidget
 

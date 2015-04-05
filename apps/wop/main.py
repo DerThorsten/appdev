@@ -29,7 +29,7 @@ from math import cos,sin,degrees
 
 import numpy
 import functools
-import level
+import level as all_level
 
 from wop.game_items import *
 
@@ -40,8 +40,8 @@ class GameRendererWidget(BoxLayout):
         self.lastTouchPos = None
         super(GameRendererWidget,self).__init__(orientation="horizontal",*arg,**kwarg)
 
-        self.scale = 15.0
-        self.offset = numpy.array([0,0],dtype='float32')
+        self.scale_ = 15.0
+        self.offset_ = numpy.array([10,0],dtype='float32')
 
         self.level = None            
         #self.world = self.level.world
@@ -50,48 +50,89 @@ class GameRendererWidget(BoxLayout):
         #self.debugDraw = DebugDraw(world=self.world,widget=self, scale=self.scale, offset=self.offset)
 
         self.toRender = dict()
-
+        self.roi = None
     def set_level(self, level):
         self.level = level
+        self.roi = roi = level.roi
+
+
+    def on_enter(self):
+        print "enter viewer"
+        self.roi = roi = self.level.roi
+        lw,lh = roi[1][0] - roi[0][0],roi[1][1] - roi[0][1]
+        w,h = self.width,self.height
+        sw,sh = w/lw, h/lh
+
+        print "lw,lh",lw,lh,"w,h",w,h,"sw,sh",sw,sh
+
+        self.setOffset(roi[0])
+        self.setScale(min(sw,sh))
 
     def setScale(self, scale):
-        self.scale = scale
-        #self.debugDraw.scale = scale
-
+        wc = self.wolrdCenterOfCanvas()
+        self.scale_ = scale
+        if self.level is not None:
+            wc2 = numpy.array(self.wolrdCenterOfCanvas())
+            self.setOffset(self.getOffset() + (wc2-wc))
     def getScale(self):
-        return self.scale
+        return self.scale_
+
+    def wolrdCenterOfCanvas(self):
+        return self.canvas_point_to_world((self.width/2.0, self.height/2.0))
+
+    def setOffset(self, offset):
+        self.offset_ = numpy.require(offset)
+
+        canvasPixelSize = self.width, self.height
+        canvasWorldSize = self.canvas_length_to_world(canvasPixelSize)
+
+        #if self.roi is not None:
+        #   self.offset_[0] =  min(self.roi[0][0], self.offset_[0])
+        #   self.offset_[1] =  min(self.roi[0][1], self.offset_[1])
+
+    def getOffset(self):
+        return self.offset_
 
 
     def canvas_point_to_world(self, point,out=None):
-        s = self.scale
-        o = self.offset
+        s = self.getScale()
+        o = self.getOffset()
         x,y = point 
         wx  = x/s - o[0]
         wy  = y/s - o[1]
         return (wx,wy)
 
     def canvas_length_to_world(self,length,out=None):
+        s = self.getScale()
         if isinstance(length,(list,tuple)):
-            return [l/self.scale for l in length]
+            return [l/s for l in length]
         else : 
-            return  length/self.scale
+            return  length/s
 
     def world_point_to_canvas(self,point,out=None):
-        s = self.scale
-        o = self.offset
+        s = self.getScale()
+        o = self.getOffset()
         x,y = point 
-        cx  = (x+ o[0])*self.scale
-        cy  = (y+ o[1])*self.scale
+        cx  = (x+ o[0])*s
+        cy  = (y+ o[1])*s
         return (cx, cy)
 
     def world_length_to_canvas(self,length,out=None):
+        s = self.getScale()
         if isinstance(length,(list,tuple)):
-            return [l*self.scale for l in length]
+            return [l*s for l in length]
         else :
-            return length*self.scale
+            return length*s
 
 
     def on_touch_down(self, touch):
+        print "off ",self.getOffset(), "sc ",self.getScale()
+        print "cpos",touch.pos
+
+ 
+
+
+
         #return False
         hasButton = False
         if 'button' in touch.profile:
@@ -108,14 +149,7 @@ class GameRendererWidget(BoxLayout):
                 levelCb = self.level.world_on_touch_down
                 wPos = self.canvas_point_to_world(touch.pos)
                 r = levelCb(wPos , touch)
-
-            if False:
-                circle=b2FixtureDef(shape=b2CircleShape(radius=1),
-                                    density=1,friction=20)
-                gooBody = self.world.CreateBody(type=b2_dynamicBody,
-                                                position=wPos,
-                                                fixtures=circle)
-                self.goos.append(gooBody)
+                print "wpos",wPos
     def on_touch_move(self, touch):
 
         ppos = touch.ppos
@@ -146,6 +180,11 @@ class GameRendererWidget(BoxLayout):
                 
 
     def render(self):
+
+        sc = self.getScale()
+        o = self.getOffset().copy()
+        o*=sc
+        #o = tuple(o)
         toRender = self.toRender
         zValues = toRender.keys()
         sortedzValues = sorted(zValues)
@@ -155,8 +194,19 @@ class GameRendererWidget(BoxLayout):
         for z in sortedzValues:
             renderList = toRender[z]
             with self.canvas:
+
+                PushMatrix()
+                t = Translate()
+                t.xy = o
+
+                s = Scale()
+                s.xyz = [sc,sc,1.0]
+
                 for renderItem in renderList:
                     renderItem()
+
+                PopMatrix()
+
         for z in zValues:
                 toRender[z] = []
 
@@ -437,7 +487,7 @@ class DrawPhysicsWidget(BoxLayout):
 
     def init_level(self):
         # load level
-        self.level = level.SimpleLevel(gameRender=self.viewer)
+        self.level = all_level.SimpleLevel(gameRender=self.viewer)
         self.level.initPhysics()
         # pass the level  to the viewer
         self.viewer.set_level(self.level)

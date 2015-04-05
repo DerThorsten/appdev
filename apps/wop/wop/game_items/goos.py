@@ -82,8 +82,8 @@ class Goo(GameItem):
     def renderJoint(self,gr, joint, otherGoo):
         pa = joint.anchorA
         pb = joint.anchorB
-        canvasDraw =CanvasDraw( gr.offset, gr.scale)
-        canvasDraw.drawSegment(pa, pb, color=(1,1,1),width=1.5)
+        canvasDraw =CanvasDraw()
+        canvasDraw.drawSegment(pa, pb, color=(1,1,1),width=0.2)
 
 
     def localAnchor(self):
@@ -111,10 +111,10 @@ class RoundGoo(Goo):
         #c = Color(1,1,1)
         goo_radius = self.__class__.gooRadius()
 
-        posA = level.gameRender.world_point_to_canvas(pos-goo_radius)
-        posB = level.gameRender.world_point_to_canvas(pos)
-        cRad = level.gameRender.world_length_to_canvas(goo_radius)
-        size = (2.0*cRad, 2.0*cRad)
+        posA = pos-goo_radius
+        posB = pos
+
+        size = (2.0*goo_radius, 2.0*goo_radius)
         PushMatrix()
         rot = Rotate()
         rot.angle = angle
@@ -133,16 +133,14 @@ class RoundGoo(Goo):
         posB = level.gameRender.world_point_to_canvas(pos)
         if canBeAdded:
             extendedRad = gooRadius*1.2
-            posA = level.gameRender.world_point_to_canvas(pos-extendedRad)
-            cExtendedRad = level.gameRender.world_length_to_canvas(extendedRad)
-            size = (2.0*cExtendedRad, 2.0*cExtendedRad)
+            posA = pos-extendedRad
+            size = (2.0*extendedRad, 2.0*extendedRad)
             e = Ellipse(pos=posA,size=size,color=Color(0,1,0,0.3))
             self.render_it(level, pos, 0.0)
         else :
-            posA = level.gameRender.world_point_to_canvas(pos-gooRadius)
+            posA = pos-gooRadius
             self.render_it(level, pos, 0.0)
-            cRad = level.gameRender.world_length_to_canvas(gooRadius)
-            size = (2.0*cRad, 2.0*cRad)
+            size = (2.0*gooRadius, 2.0*gooRadius)
             e = Ellipse(pos=posA,size=size,color=Color(1,0,0,0.3))
             
 
@@ -168,8 +166,8 @@ class BlackGoo(RoundGoo):
     def renderJoint(self,gr, joint, otherGoo):
         pa = joint.anchorA
         pb = joint.anchorB
-        canvasDraw =CanvasDraw( gr.offset, gr.scale)
-        canvasDraw.drawSegment(pa, pb, color=(0.2,0.2,0.2),width=3)
+        canvasDraw =CanvasDraw( )
+        canvasDraw.drawSegment(pa, pb, color=(0.2,0.2,0.2),width=0.3)
 
     @classmethod
     def playBuildSound(cls):
@@ -204,8 +202,8 @@ class GreenGoo(RoundGoo):
     def renderJoint(self,gr, joint, otherGoo):
         pa = joint.anchorA
         pb = joint.anchorB
-        canvasDraw =CanvasDraw( gr.offset, gr.scale)
-        canvasDraw.drawSegment(pa, pb, color=(0.2,0.7,0.2),width=3)
+        canvasDraw =CanvasDraw( )
+        canvasDraw.drawSegment(pa, pb, color=(0.2,0.7,0.2),width=0.2)
 
     @classmethod
     def playBuildSound(cls):
@@ -266,15 +264,13 @@ class AnchorGoo(Goo):
         gooSize = param.gooSize
 
 
-        cpos = level.gameRender.world_point_to_canvas(pos)
-        cSize = level.gameRender.world_length_to_canvas(param.gooSize)
         PushMatrix()
         rot = Rotate()
         rot.angle = angle
         #print goo.angle
         rot.axis = (0,0,1)
-        rot.origin = cpos
-        Rectangle(pos=cpos, size=cSize,color=Color(1,1,1,1.0),
+        rot.origin = pos
+        Rectangle(pos=pos, size=param.gooSize,color=Color(1,1,1,1.0),
                   texture=self.gooTexture())
         PopMatrix()
 
@@ -282,17 +278,15 @@ class AnchorGoo(Goo):
 
     def render_tentative(self, level, pos, canBeAdded):
         param = self.param()
-        posB = level.gameRender.world_point_to_canvas(pos)
-        cSize = level.gameRender.world_length_to_canvas(param.gooSize)
         if canBeAdded:
-            e = Rectangle(pos=posB,size=cSize,color=Color(0,1,0,0.3))
+            e = Rectangle(pos=pos,size=param.gooSize,color=Color(0,1,0,0.3))
             self.render_it(level, pos, 0.0)
         else :
             #posA = level.gameRender.world_point_to_canvas(pos-gooRadius)
             self.render_it(level, pos, 0.0)
             #cRad = level.gameRender.world_length_to_canvas(gooRadius)
             #size = (2.0*cRad, 2.0*cRad)
-            e = Rectangle(pos=posB,size=cSize,color=Color(1,0,0,0.3))
+            e = Rectangle(pos=pos,size=param.gooSize,color=Color(1,0,0,0.3))
             
 
     def addToWorld(self, world, pos):

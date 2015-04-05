@@ -154,9 +154,7 @@ class Level(object):
 
 
         self.gameRender = gameRender
-        self.debugDraw = DebugDraw(world=None,
-                            scale=self.gameRender.scale, 
-                            offset=self.gameRender.offset)
+        self.debugDraw = DebugDraw(world=None)
 
         self.wmManager = None
         self.gooGraph = GooGraph(self)
@@ -174,14 +172,14 @@ class Level(object):
         pass
 
     def setScale(self, scale):
-        self.gameRender.scale = scale
+        self.gameRender.setScale(scale)
     def getScale(self):
-        return self.gameRender.scale
+        return self.gameRender.getScale()
 
     def setOffset(self, offset):
-        self.gameRender.offset = offset
+        self.gameRender.setOffset(offset)
     def getOffset(self):
-        return self.gameRender.offset   
+        return self.gameRender.getOffset()
 
     def world_on_touch_down(self, wpos, touch):
         body = wh.body_at_pos(self.world, pos=wpos)
@@ -264,8 +262,6 @@ class Level(object):
         gr = self.gameRender
 
 
-        self.debugDraw.scale = gr.scale
-        self.debugDraw.offset = gr.offset
         self.debugDraw.world = self.world
         
         # add debug draw to render queue
@@ -312,8 +308,8 @@ class SimpleLevel(Level):
         super(SimpleLevel, self).__init__(world= b2World((0.0,-10.0)),gameRender=gameRender)
 
 
-        self.roi = (-5,-5), (45, 45)
-        self.s = 40
+        self.roi = (0,0), (40, 40)
+        self.s = 30
         self.groundBody = None
     def initPhysics(self):  
         super(SimpleLevel, self).initPhysics()
@@ -338,8 +334,7 @@ class SimpleLevel(Level):
         super(SimpleLevel, self).postUpdate(dt)
 
     def render_level(self):
-        gr = self.gameRender
-        canvasDraw =CanvasDraw( gr.offset, gr.scale)
+        canvasDraw =CanvasDraw( )
         canvasDraw.drawSegment((0,0),(0,self.s),(1,1,1))
         canvasDraw.drawSegment((0,self.s),(self.s,self.s),(1,1,1))
         canvasDraw.drawSegment((self.s,self.s),(self.s,0),(1,1,1))
