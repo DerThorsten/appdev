@@ -1,0 +1,7 @@
+from level_canvas_widget import LevelCanvasWidget
+from level_widget import LevelWidget
+from create_and_select_widget import CreateAndSelectWidget
+from level_selector_widget import LevelSelectorWidget
+from main_menu_widget import MainMenuWidget
+from main_settings_widget import MainSettingWidget
+from screen_selector_widget import ScreenSelectorWidget

@@ -4,10 +4,12 @@ from Box2D import *
 from kivy.clock import Clock
 from kivy.logger import Logger
 import operator
-import world_helper as wh
 from wop import DebugDraw,CanvasDraw
 import math
 from wop.game_items import *
+import wop
+from kivy.config import Config
+from kivy.app import App
 
 class FindAllGoos(Box2D.b2QueryCallback):
     def __init__(self, pos, minDist, maxDist): 
@@ -182,7 +184,7 @@ class Level(object):
         return self.gameRender.getOffset()
 
     def world_on_touch_down(self, wpos, touch):
-        body = wh.body_at_pos(self.world, pos=wpos)
+        body = wop.body_at_pos(self.world, pos=wpos)
 
         if body is not None:
 
@@ -265,10 +267,16 @@ class Level(object):
         self.debugDraw.world = self.world
         
         # add debug draw to render queue
-        #gr.add_render_item(self.debugDraw.debugDraw,z=0)
+        app = App.get_running_app()
+        config = app.config
+
+        dd = config.getboolean(u'section1',u'debugDraw')
+        if(dd):
+            z = config.getint(u'section1',u'debugDrawZ')
+            gr.add_render_item(self.debugDraw.debugDraw,z=z)
         
         # add level render to render queue
-        gr.add_render_item(self.render_level,z=1)
+        self.add_levels_render_items(gr)
 
         # render goos
         gr = self.gameRender
@@ -309,8 +317,12 @@ class SimpleLevel(Level):
 
 
         self.roi = (0,0), (40, 40)
-        self.s = 30
+        self.s = 40
         self.groundBody = None
+
+        self.image   = CoreImage.load("res/bg.jpg")
+        self.texture = self.image.texture
+
     def initPhysics(self):  
         super(SimpleLevel, self).initPhysics()
 
@@ -333,12 +345,23 @@ class SimpleLevel(Level):
     def postUpdate(self, dt):
         super(SimpleLevel, self).postUpdate(dt)
 
-    def render_level(self):
-        canvasDraw =CanvasDraw( )
-        canvasDraw.drawSegment((0,0),(0,self.s),(1,1,1))
-        canvasDraw.drawSegment((0,self.s),(self.s,self.s),(1,1,1))
-        canvasDraw.drawSegment((self.s,self.s),(self.s,0),(1,1,1))
-        canvasDraw.drawSegment((self.s,0),(0,0),(1,1,1))
+    def add_levels_render_items(self, gr):
+
+        def renderBg():
+            canvasDraw =CanvasDraw( )
+            Rectangle(texture=self.texture,size=(40,40),
+                      pos=(0,0),image="res/bg.jpg",
+                      color=Color(1,1,1,1.0))
+        def renderPhysics():
+            canvasDraw =CanvasDraw( )
+            canvasDraw.drawSegment((0,0),(0,self.s),(1,1,1))
+            canvasDraw.drawSegment((0,self.s),(self.s,self.s),(1,1,1))
+            canvasDraw.drawSegment((self.s,self.s),(self.s,0),(1,1,1))
+            canvasDraw.drawSegment((self.s,0),(0,0),(1,1,1))
+
+        gr.add_render_item(renderBg, z=0)
+        gr.add_render_item(renderPhysics, z=1)
+
 
 if __name__ == '__main__':
     pass
