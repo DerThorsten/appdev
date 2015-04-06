@@ -6,6 +6,7 @@ class WorldOfPhysicsBaseApp(App):
     def build(self):
         screenSelectorWidget = ScreenSelectorWidget()
         #screenSelectorWidget.level_widget.init_level()
+        self.level_widget = screenSelectorWidget.level_widget
         return screenSelectorWidget
 
     def build_config(self, config):
@@ -63,8 +64,9 @@ class WorldOfPhysicsBaseApp(App):
             #Config.get(u'section1',u'debugDraw')
 
     def on_pause(self):
-        # Here you can save data if needed
+        self.level_widget.on_global_pause()
         return True
     def on_resume(self):
         # Here you can check if any data needs replacing (usually nothing)
+        self.level_widget.on_global_resume()
         pass

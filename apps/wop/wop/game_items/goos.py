@@ -167,8 +167,9 @@ class BlackGoo(RoundGoo):
         pa = joint.anchorA
         pb = joint.anchorB
         canvasDraw =CanvasDraw( )
-        canvasDraw.drawSegment(pa, pb, color=(0.2,0.2,0.2),width=0.3)
-
+        pl = [pa[0],pa[1], pb[0], pb[1]]
+        Line(points=pl, width=0.35, color=Color(0.0,0.0,0.0))
+        Line(points=pl, width=0.2, color=Color(0.2,0.2,0.2))
     @classmethod
     def playBuildSound(cls):
        BlackGoo._buildSound.play()
@@ -202,8 +203,7 @@ class GreenGoo(RoundGoo):
     def renderJoint(self,gr, joint, otherGoo):
         pa = joint.anchorA
         pb = joint.anchorB
-        canvasDraw =CanvasDraw( )
-        canvasDraw.drawSegment(pa, pb, color=(0.2,0.7,0.2),width=0.2)
+        Line(points=[pa, pb], width=0.2, color=Color(*(0.2,0.6,0.2,0.5)))
 
     @classmethod
     def playBuildSound(cls):

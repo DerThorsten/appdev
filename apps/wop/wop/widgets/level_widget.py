@@ -72,6 +72,14 @@ class LevelWidget(BoxLayout):
         self.level = None
 
 
+    def on_global_pause(self):
+        if self.level is not None:
+            self.level.on_global_pause()
+
+    def on_global_resume(self):
+        if self.level is not None:
+            self.level.on_global_resume()
+
     def on_pre_leave(self):
         self.levelCanvasWidget.on_pre_leave()
         self._kill_level()

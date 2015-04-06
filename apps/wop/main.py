@@ -14,3 +14,4 @@ class WorldOfPhysics(WorldOfPhysicsBaseApp):
 
 if __name__ == '__main__':
     WorldOfPhysics().run()
+BaseLevel
