@@ -2,17 +2,28 @@ from kivy.app import App
 from wop.widgets import ScreenSelectorWidget
 
 class WorldOfPhysicsBaseApp(App):
-
+    title = 'World Of Physics!'
     def build(self):
         screenSelectorWidget = ScreenSelectorWidget()
         #screenSelectorWidget.level_widget.init_level()
         self.level_widget = screenSelectorWidget.level_widget
         return screenSelectorWidget
 
+    def on_pause(self):
+        self.level_widget.on_global_pause()
+        return True
+    def on_resume(self):
+        # Here you can check if any data needs replacing (usually nothing)
+        self.level_widget.on_global_resume()
+        pass
+
+    def on_stop(self):
+        pass
+
     def build_config(self, config):
         config.setdefaults('section1', {
             'key1': 'value1',
-            'debugDraw' : True,
+            'debugDraw' : False,
             'debugDrawZ' : 100
         })
 
@@ -63,10 +74,3 @@ class WorldOfPhysicsBaseApp(App):
 
             #Config.get(u'section1',u'debugDraw')
 
-    def on_pause(self):
-        self.level_widget.on_global_pause()
-        return True
-    def on_resume(self):
-        # Here you can check if any data needs replacing (usually nothing)
-        self.level_widget.on_global_resume()
-        pass
