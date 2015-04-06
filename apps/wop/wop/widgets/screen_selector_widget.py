@@ -4,7 +4,7 @@ from kivy.lang import Builder
 
 Builder.load_string("""
 <ScreenSelectorWidget>:
-    levelWidget: levelWidget
+    level_widget: level_widget
     screen_manager: screen_manager
     ScreenManager:
         id: screen_manager
@@ -21,20 +21,21 @@ Builder.load_string("""
             name: 'level_selector_screen'
             LevelSelectorWidget:
                 screen_manager: screen_manager
+                level_widget: level_widget
         Screen:
             name: 'level_render_screen'
-            on_pre_enter: levelWidget.viewer.on_pre_enter()
-            on_pre_leave: levelWidget.viewer.on_pre_leave()
-            on_enter: levelWidget.viewer.on_enter()
-            on_leave: levelWidget.viewer.on_leave()
+            on_pre_enter: level_widget.on_pre_enter()
+            on_pre_leave: level_widget.on_pre_leave()
+            on_enter: level_widget.on_enter()
+            on_leave: level_widget.on_leave()
             LevelWidget:
                 screen_manager: screen_manager
-                id: levelWidget
+                id: level_widget
 
 
 """)
 class ScreenSelectorWidget(BoxLayout):
-    levelWidget = ObjectProperty(None)
+    level_widget = ObjectProperty(None)
     screen_manager = ObjectProperty(None)
     def __init__(self,*args,**kwargs):
         super(ScreenSelectorWidget,self).__init__(*args,**kwargs)

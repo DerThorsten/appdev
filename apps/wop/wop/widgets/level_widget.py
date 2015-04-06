@@ -1,16 +1,10 @@
 from kivy.logger import Logger
-from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.lang import Builder
-from kivy.uix.bubble import Bubble
 from kivy.uix.widget import Widget
-from kivy.uix.tabbedpanel import TabbedPanel
-from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.clock import Clock
 from kivy.graphics import *
-from kivy.core.image import Image as CoreImage
-from kivy.config import Config
 from kivy.properties import NumericProperty, ReferenceListProperty,\
     ObjectProperty
 
@@ -23,11 +17,10 @@ import wop.level
 Builder.load_string("""
 <LevelWidget>:
     size_hint: (1, 1)
-    viewer: viewer
-    zoomOutButton: zoomOutButton
-    zoomInButton: zoomInButton
+    levelCanvasWidget: levelCanvasWidget
+    zoom_outButton: zoom_outButton
+    zoom_inButton: zoom_inButton
     createAndSelectWidget: createAndSelectWidget
-    #screen_manager: screen_manager
     BoxLayout:
         opacity: 1
         size_hint: (1, 1)
@@ -49,20 +42,20 @@ Builder.load_string("""
                         index: -3
                         text: "foo"
                         size_hint: (1,1)
-                        id: viewer
+                        id: levelCanvasWidget
                         
 
             BoxLayout:
                 size_hint: (1,0.1)
                 orientation: "horizontal"
                 Button:
-                    id: zoomOutButton
+                    id: zoom_outButton
                     text: "-"
-                    on_release: root.zoomOut()
+                    on_release: root.zoom_out()
                 Button:
-                    id: zoomInButton
+                    id: zoom_inButton
                     text: "+"
-                    on_release: root.zoomIn()
+                    on_release: root.zoom_in()
 
                 Button:
                     id: menuButton
@@ -71,38 +64,68 @@ Builder.load_string("""
 """)
 
 class LevelWidget(BoxLayout):
-    viewer = ObjectProperty(None)
-    zoomInButton = ObjectProperty(None)
-    zoomIOutButton = ObjectProperty(None)
+    levelCanvasWidget = ObjectProperty(None)
     createAndSelectWidget = ObjectProperty(None)
     screen_manager = ObjectProperty(None)
     def __init__(self,*arg,**kwarg):
         super(LevelWidget,self).__init__(*arg, **kwarg)
         self.level = None
-    def zoomIn(self):
-        s = self.getScale()
-        self.setScale(s*1.25)
-    def zoomOut(self):
-        s = self.getScale()
+
+
+    def on_pre_leave(self):
+        self.levelCanvasWidget.on_pre_leave()
+        self._kill_level()
+    def on_leave(self):
+        self.levelCanvasWidget.on_leave()
+    def on_pre_enter(self):
+        self.levelCanvasWidget.on_pre_enter()
+        self._init_level()
+    def on_enter(self):
+        self.levelCanvasWidget.on_enter()
+        #self._init_level()
+
+
+    def zoom_in(self):
+        s = self.get_scale()
+        self.set_scale(s*1.25)
+    def zoom_out(self):
+        s = self.get_scale()
         ns = s/1.25
         if ns > 1.0:
-            self.setScale(ns)
-    def setScale(self, scale):
-        self.viewer.setScale(scale)
+            self.set_scale(ns)
+
+    def set_scale(self, scale):
+        self.levelCanvasWidget.set_scale(scale)
         
-    def getScale(self):
+    def get_scale(self):
         print self.pos,self.size
-        return self.viewer.getScale()
+        return self.levelCanvasWidget.get_scale()
+
+    def get_offset(self):
+        return self.levelCanvasWidget.get_offset()
+
+    def set_offset(self, offset):
+        return self.levelCanvasWidget.set_offset(offset)
+
+    def render(self):
+        self.levelCanvasWidget.render()
+
+    def add_render_item(self, renderItem, z):
+        self.levelCanvasWidget.add_render_item(renderItem,z)
 
 
+    def set_level(self, level):
+        assert  self.level is None
+        self.level = level
 
-
-    def init_level(self):
+    def _init_level(self):
         # load level
-        self.level = wop.level.SimpleLevel(gameRender=self.viewer)
+        #self.level = wop.level.SimpleLevel(gameRender=self.levelCanvasWidget)
+        
+        assert self.level is not None
         self.level.initPhysics()
-        # pass the level  to the viewer
-        self.viewer.set_level(self.level)
+        # pass the level  to the levelCanvasWidget
+        self.levelCanvasWidget.set_level(self.level)
 
         wmManager = self.createAndSelectWidget.wmManager
         #
@@ -110,4 +133,10 @@ class LevelWidget(BoxLayout):
         wmManager.setLevel(level = self.level)
         # start the level (start physic simulation)
         # will schedule level.updateCaller
-        self.level.start()
+        self.level.start_level()
+
+    def _kill_level(self):
+        self.level.stop_level()
+        self.level = None
+
+

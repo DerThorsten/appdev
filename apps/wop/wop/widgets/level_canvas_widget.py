@@ -57,15 +57,15 @@ class LevelCanvasWidget(BoxLayout):
         print "lw,lh",lw,lh,"w,h",w,h,"sw,sh",sw,sh
 
         
-        self.setScale(max(sw,sh))
-        self.setOffset(roi[0])
-    def setScale(self, scale):
+        self.set_scale(max(sw,sh))
+        self.set_offset(roi[0])
+    def set_scale(self, scale):
         wc = self.wolrdCenterOfCanvas()
         self.scale_ = scale
         if self.level is not None:
             wc2 = numpy.array(self.wolrdCenterOfCanvas())
-            self.setOffset(self.getOffset() + (wc2-wc))
-    def getScale(self):
+            self.set_offset(self.get_offset() + (wc2-wc))
+    def get_scale(self):
         return self.scale_
 
     def wolrdCenterOfCanvas(self):
@@ -83,7 +83,7 @@ class LevelCanvasWidget(BoxLayout):
         return (self.canvas_point_to_world(0,0),
                 self.canvas_point_to_world(w,h))
 
-    def setOffset(self, offset):
+    def set_offset(self, offset):
         self.offset_ = numpy.require(offset)
         vwW = self.visibleWorldWidth()
         canvasPixelSize = self.width, self.height
@@ -99,35 +99,35 @@ class LevelCanvasWidget(BoxLayout):
         #if self.offset_[0] + vwW < self.roi[1][0]:
         #    print "OUTCH"
 
-    def getOffset(self):
+    def get_offset(self):
         return self.offset_
 
 
     def canvas_point_to_world(self, point,out=None):
-        s = self.getScale()
-        o = self.getOffset()
+        s = self.get_scale()
+        o = self.get_offset()
         x,y = point 
         wx  = x/s - o[0]
         wy  = y/s - o[1]
         return (wx,wy)
 
     def canvas_length_to_world(self,length,out=None):
-        s = self.getScale()
+        s = self.get_scale()
         if isinstance(length,(list,tuple)):
             return [l/s for l in length]
         else : 
             return  length/s
 
     def world_point_to_canvas(self,point,out=None):
-        s = self.getScale()
-        o = self.getOffset()
+        s = self.get_scale()
+        o = self.get_offset()
         x,y = point 
         cx  = (x+ o[0])*s
         cy  = (y+ o[1])*s
         return (cx, cy)
 
     def world_length_to_canvas(self,length,out=None):
-        s = self.getScale()
+        s = self.get_scale()
         if isinstance(length,(list,tuple)):
             return [l*s for l in length]
         else :
@@ -137,7 +137,7 @@ class LevelCanvasWidget(BoxLayout):
     def on_touch_down(self, touch):
 
 
-        print "off ",self.getOffset(), "sc ",self.getScale()
+        print "off ",self.get_offset(), "sc ",self.get_scale()
         print "cpos",touch.pos
 
  
@@ -149,12 +149,12 @@ class LevelCanvasWidget(BoxLayout):
         if 'button' in touch.profile:
             hasButton = True
         if hasButton and touch.button == 'scrollup':
-            self.setScale(1.25*self.getScale())
+            self.set_scale(1.25*self.get_scale())
         elif hasButton and touch.button == 'scrolldown':
-            os  = self.getScale()
+            os  = self.get_scale()
             ns = os/1.25
             if ns > 1.0:
-                self.setScale(ns)
+                self.set_scale(ns)
         elif hasButton and touch.button == 'right':
             pass
 
@@ -171,8 +171,8 @@ class LevelCanvasWidget(BoxLayout):
             hasButton = True
 
         if hasButton and touch.button == 'right':
-            diff = (numpy.array(touch.ppos) - touch.pos)/self.getScale()
-            self.setOffset(self.getOffset() - diff)
+            diff = (numpy.array(touch.ppos) - touch.pos)/self.get_scale()
+            self.set_offset(self.get_offset() - diff)
         else :
             ppos = touch.ppos
             if self.level is not None:
@@ -205,8 +205,8 @@ class LevelCanvasWidget(BoxLayout):
 
     def render(self):
 
-        sc = self.getScale()
-        o = self.getOffset().copy()
+        sc = self.get_scale()
+        o = self.get_offset().copy()
         o*=sc
         #o = tuple(o)
         toRender = self.toRender

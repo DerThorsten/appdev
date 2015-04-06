@@ -173,15 +173,15 @@ class Level(object):
     def fixture_destroyed(self, fixture):
         pass
 
-    def setScale(self, scale):
-        self.gameRender.setScale(scale)
-    def getScale(self):
-        return self.gameRender.getScale()
+    def set_scale(self, scale):
+        self.gameRender.set_scale(scale)
+    def get_scale(self):
+        return self.gameRender.get_scale()
 
-    def setOffset(self, offset):
-        self.gameRender.setOffset(offset)
-    def getOffset(self):
-        return self.gameRender.getOffset()
+    def set_offset(self, offset):
+        self.gameRender.set_offset(offset)
+    def get_offset(self):
+        return self.gameRender.get_offset()
 
     def world_on_touch_down(self, wpos, touch):
         body = wop.body_at_pos(self.world, pos=wpos)
@@ -223,9 +223,11 @@ class Level(object):
         self.killBoundingBoxBody = self.world.CreateBody(position=self.roi[0])
         self.killBoundingBoxBody.CreateEdgeChain(self.killBoxVerts)
 
-
-    def start(self):
+    def start_level(self):
         Clock.schedule_interval(self.updateCaller,1.0/50)
+
+    def stop_level(self):
+        Clock.unschedule(self.updateCaller)
 
     def updateCaller(self, dt):
         self.preUpdate(dt)
@@ -311,9 +313,9 @@ def boxVertices(p0, p1, shiftOrigin=True):
         px,py = p0
         return [(0+px,0+py),(0+px,h+py),(w+px,h+py),(w+px,0+py),(0+px,0+py)]
 
-class SimpleLevel(Level):
+class SimpleLevel1(Level):
     def __init__(self, gameRender):
-        super(SimpleLevel, self).__init__(world= b2World((0.0,-10.0)),gameRender=gameRender)
+        super(SimpleLevel1, self).__init__(world= b2World((0.0,-10.0)),gameRender=gameRender)
 
 
         self.roi = (0,0), (40, 40)
@@ -324,7 +326,7 @@ class SimpleLevel(Level):
         self.texture = self.image.texture
 
     def initPhysics(self):  
-        super(SimpleLevel, self).initPhysics()
+        super(SimpleLevel1, self).initPhysics()
 
         
 
@@ -337,13 +339,13 @@ class SimpleLevel(Level):
 
 
     def preUpdate(self, dt):
-        super(SimpleLevel, self).preUpdate(dt)
+        super(SimpleLevel1, self).preUpdate(dt)
 
     def update(self, dt):
-        super(SimpleLevel, self).update(dt)
+        super(SimpleLevel1, self).update(dt)
 
     def postUpdate(self, dt):
-        super(SimpleLevel, self).postUpdate(dt)
+        super(SimpleLevel1, self).postUpdate(dt)
 
     def add_levels_render_items(self, gr):
 
@@ -362,6 +364,48 @@ class SimpleLevel(Level):
         gr.add_render_item(renderBg, z=0)
         gr.add_render_item(renderPhysics, z=1)
 
+
+class SimpleLevel2(Level):
+    def __init__(self, gameRender):
+        super(SimpleLevel2, self).__init__(world= b2World((0.0,-10.0)),gameRender=gameRender)
+
+
+        self.roi = (0,0), (20, 20)
+        self.s = 10
+        self.groundBody = None
+
+        self.image   = CoreImage.load("res/bg.jpg")
+        self.texture = self.image.texture
+
+    def initPhysics(self):  
+        super(SimpleLevel2, self).initPhysics()
+
+        
+
+
+
+        s = self.s
+        self.groundBody = self.world.CreateBody(position=(0, 0))
+        self.groundBody.CreateEdgeChain([(0,0),(0,s),(s,s),(s,0), (0,0) ])
+
+
+
+    def add_levels_render_items(self, gr):
+
+        def renderBg():
+            canvasDraw =CanvasDraw( )
+            Rectangle(texture=self.texture,size=(self.s,self.s),
+                      pos=(0,0),image="res/bg.jpg",
+                      color=Color(1,1,1,1.0))
+        def renderPhysics():
+            canvasDraw =CanvasDraw( )
+            canvasDraw.drawSegment((0,0),(0,self.s),(1,1,1))
+            canvasDraw.drawSegment((0,self.s),(self.s,self.s),(1,1,1))
+            canvasDraw.drawSegment((self.s,self.s),(self.s,0),(1,1,1))
+            canvasDraw.drawSegment((self.s,0),(0,0),(1,1,1))
+
+        gr.add_render_item(renderBg, z=0)
+        gr.add_render_item(renderPhysics, z=1)
 
 if __name__ == '__main__':
     pass

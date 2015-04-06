@@ -1,1 +1,1 @@
-from world_of_physics_app import WorldOfPhysicsApp
+from world_of_physics_base_app import WorldOfPhysicsBaseApp

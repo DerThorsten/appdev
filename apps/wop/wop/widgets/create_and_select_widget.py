@@ -1,16 +1,9 @@
 from kivy.logger import Logger
-from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.lang import Builder
-from kivy.uix.bubble import Bubble
 from kivy.uix.widget import Widget
-from kivy.uix.tabbedpanel import TabbedPanel
-from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.clock import Clock
 from kivy.graphics import *
 from kivy.core.image import Image as CoreImage
-from kivy.config import Config
 
 from kivy.properties import NumericProperty, ReferenceListProperty,\
     ObjectProperty
@@ -59,8 +52,8 @@ class SimpleSelector(WorldManipulator):
         #Logger.debug("SimpleSelector: touch  up   %.1f %.1f"%wpos ) 
         if not self.hasBody :
             d = numpy.array(wpos) - numpy.array(wppos)
-            oldOffset = self.level.getOffset()[:]
-            self.level.setOffset(oldOffset+d)
+            oldOffset = self.level.get_offset()[:]
+            self.level.set_offset(oldOffset+d)
 
     def world_on_touch_up(self, wpos, touch):
         #Logger.debug("SimpleSelector: touch  move %.1f %.1f"%wpos ) 

@@ -1,23 +1,12 @@
 from kivy.app import App
 from wop.widgets import ScreenSelectorWidget
 
-class WorldOfPhysicsApp(App):
+class WorldOfPhysicsBaseApp(App):
 
     def build(self):
-
-        #self.build_config(Config)
-        if False:
-            bc =  LevelWidget()
-
-            bc.init_level()
-            return bc
-            #return TheGame()
-        else:
-            screenSelectorWidget = ScreenSelectorWidget()
-            screenSelectorWidget.levelWidget.init_level()
-            return screenSelectorWidget
-    #def on_pause(self): 
-    #    return True
+        screenSelectorWidget = ScreenSelectorWidget()
+        #screenSelectorWidget.level_widget.init_level()
+        return screenSelectorWidget
 
     def build_config(self, config):
         config.setdefaults('section1', {
