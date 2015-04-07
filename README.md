@@ -12,5 +12,7 @@ To start the fun run the
 Maybe you need to cd to the folder to avoid bugs.
 
 To build the app for android you need to do a bit more:
-Clone https://github.com/DerThorsten/python-for-android.
+  - Clone https://github.com/DerThorsten/python-for-android.
+  - ...
+
 The next steps will be here soon.
