@@ -2,14 +2,20 @@ from kivy.app import App
 from wop.widgets import ScreenSelectorWidget
 from kivy.storage.jsonstore import JsonStore
 
-from wop import SaveGame
+hasSaveGamemMod = True
+try:
+    from wop import SaveGame
+except:
+    hasSaveGamemMod = False
 
 class WorldOfPhysicsBaseApp(App):
     title = 'World Of Physics!'
     def build(self):
-        self.savegame = SaveGame('wop_savegame.json')
-        #store.put('tito', name='Mathieu', org='kivy')
-        print self.savegame.totalPlayTime
+
+        if hasSaveGamemMod:
+            self.savegame = SaveGame('wop_savegame.json')
+            #store.put('tito', name='Mathieu', org='kivy')
+            print self.savegame.totalPlayTime
 
         screenSelectorWidget = ScreenSelectorWidget()
         #screenSelectorWidget.level_widget.init_level()
@@ -22,12 +28,14 @@ class WorldOfPhysicsBaseApp(App):
         return True
     def on_resume(self):
         # Here you can check if any data needs replacing (usually nothing)
-        self.level_widget.on_global_resume()    
-        self.savegame.on_resume()
+        self.level_widget.on_global_resume()
+        if hasSaveGamemMod:    
+            self.savegame.on_resume()
 
 
     def on_stop(self):
-        self.savegame.on_stop()
+        if hasSaveGamemMod:
+            self.savegame.on_stop()
 
     def build_config(self, config):
         config.setdefaults('section1', {
