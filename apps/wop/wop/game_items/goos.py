@@ -34,6 +34,7 @@ class GooParam(object):
         minBuildEdges = 2,
         maxBuildEdges = 5,
         canBeAddedAsJoint = True,
+        addAsJointRadius = 6.0,
         addAsJointDist = None,
         removable = False,
         connectsNonGoos = False
@@ -61,6 +62,7 @@ class GooParam(object):
         self.minBuildEdges = minBuildEdges
         self.maxBuildEdges = maxBuildEdges
         self.canBeAddedAsJoint = canBeAddedAsJoint
+        self.addAsJointRadius = addAsJointRadius
         self.addAsJointDist = addAsJointDist
         if self.addAsJointDist is None:
             self.addAsJointDist = min(*self.gooSize)
@@ -80,7 +82,7 @@ class Goo(GameItem):
         renderDistanceJoint(joint, color=(1,1,1,1), width=0.3)
 
     def localAnchor(self):
-        return (0,0)
+        return b2Vec2(0,0)
 
 class RoundGoo(Goo):
     #__metaclass__ = ABCMeta

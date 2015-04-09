@@ -10,12 +10,15 @@ class FindBodyQueryCallback(Box2D.b2QueryCallback):
         body = fixture.body
         if body.type == b2_dynamicBody:
             inside=fixture.TestPoint(self.point)
-            self.fixture=fixture
             #return False
+            print "found a body in bounding box"
             if inside:
                 self.fixture=fixture
                 # We found the object, so stop the query
+                print "    -click is inside"
                 return False
+            else:
+                print "    -click is NOT inside"
         # Continue the query
         return True
 

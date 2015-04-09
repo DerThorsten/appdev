@@ -11,16 +11,18 @@ from kivy.config import Config
 from kivy.app import App
 
 class FindAllGoos(Box2D.b2QueryCallback):
-    def __init__(self, pos, minDist, maxDist): 
+    def __init__(self, pos, minDist, maxDist,verbose=False): 
         super(FindAllGoos, self).__init__()
         self.pos = pos
         self.minDist = minDist
         self.maxDist = maxDist
         self.dists  = dict()
+        self.verbose = verbose
     def ReportFixture(self, fixture):
         body = fixture.body
         if body.type == b2_dynamicBody:
             ud = body.userData 
+            if self.verbose : print "found goo"
             if(isinstance(ud,Goo)):
                 if body not in self.dists:
                     #print "body pos",body.position, "local anchor ",ud.localAnchor()
@@ -82,50 +84,98 @@ class GooGraph(nx.Graph):
     def canGooBeAdded(self, goo, pos):
         gParam = goo.param()
         nGoos = self.number_of_nodes()
-        #print "GOO TO ADD",goo, "ngoos",self.number_of_nodes()
-        #print "min b edge",gParam.minBuildEdges
+        
+        if isinstance(pos,tuple):
+            pos = b2Vec2(*pos)
+        # try to add the goo as edge first
+        if nGoos >= 2 :
+            rad = gParam.addAsJointRadius
+            #Logger.debug("radius %f"%rad)
+            # find all goos in range
+            query = FindAllGoos(pos,
+                                minDist=0,
+                                maxDist=rad,verbose=False)
+            lb = lowerBound=pos-(rad, rad)
+            ub = lowerBound=pos+(rad, rad)
+            aabb = b2AABB(lowerBound=lb, upperBound=ub)
+            self.world.QueryAABB(query, aabb)
+            dists, sortedBodies = query.sortedBodies()
+            nOther = len(dists)
+            #Logger.debug("found #goos %d"%nOther)
 
-        #Logger.debug("GOO GRAPH: #goos %d " %nGoos)
+            if gParam.canBeAddedAsJoint and nOther>=2:
+
+                bestDist = float('inf')
+                bestPair = None
+
+                for i0 in range(nOther-1):
+                    b0 = sortedBodies[i0]
+                    goo0 = b0.userData
+                    for i1 in range(i0+1,nOther):
+                        b1 = sortedBodies[i1]
+                        goo1 = b1.userData
+                        if not self.has_edge(goo0,goo1):
+                            p0 = b0.GetWorldPoint(b2Vec2(*goo0.localAnchor()))
+                            p1 = b1.GetWorldPoint(b2Vec2(*goo1.localAnchor()))
+
+                            # todo, check that click is in bounding box of
+                            # p0 and p1
+
+                            lineDist = distToLine((p0,p1), pos)
+                            
+                            if lineDist < bestDist:
+                                bestDist = lineDist
+                                bestPair = (b0, b1)
+                if bestDist <  gParam.addAsJointDist:
+                    return (2, bestPair)
+
+
+
+
+
+
+
+
+
         gooDist = gParam.maxGooDist*1.2
         if nGoos==0:
             return (1,None)
         #if nGoos == 1:
         #    return (1,None)
         else :
-            pos = b2Vec2(*pos)
             # find all goos in range
             query = FindAllGoos(pos, minDist=gParam.minGooDist,
                                 maxDist=gParam.maxGooDist)
             aabb = b2AABB(lowerBound=pos-(gooDist, gooDist), upperBound=pos+(gooDist, gooDist))
             self.world.QueryAABB(query, aabb)
 
-        dists, sortedBodies = query.sortedBodies()
-        nOther = len(dists)
-        #print "nOthers",nOther
-        if nOther ==0 :
-            return (0, None)
-        if nOther<gParam.minBuildEdges and not(nGoos < gParam.minBuildEdges):
-            return (0,None)
-        elif nOther == 1:
-            if nGoos==1 or gParam.minBuildEdges==1:
-                b0 = sortedBodies[0]
-                return (1,(b0,))
-            else :
+            dists, sortedBodies = query.sortedBodies()
+            nOther = len(dists)
+            #print "nOthers",nOther
+            if nOther ==0 :
+                return (0, None)
+            if nOther<gParam.minBuildEdges and not(nGoos < gParam.minBuildEdges):
                 return (0,None)
-        else :
-            b0 = sortedBodies[0]
-            b1 = sortedBodies[1]
-            g0 = b0.userData
-            g1 = b1.userData
+            elif nOther == 1:
+                if nGoos==1 or gParam.minBuildEdges==1:
+                    b0 = sortedBodies[0]
+                    return (1,(b0,))
+                else :
+                    return (0,None)
+            else :
+                b0 = sortedBodies[0]
+                b1 = sortedBodies[1]
+                g0 = b0.userData
+                g1 = b1.userData
 
-            if gParam.canBeAddedAsJoint:
-                if not self.has_edge(g0,g1):
-                    lineDist = distToLine((b0.position,b1.position), pos)
-                    print "LINEDIST ",lineDist
-                    if lineDist < gParam.addAsJointDist:
-                        return (2, (b0, b1))
+                #if gParam.canBeAddedAsJoint:
+                #    if not self.has_edge(g0,g1):
+                #        lineDist = distToLine((b0.position,b1.position), pos)
+                #        #print "LINEDIST ",lineDist
+                #        if lineDist < gParam.addAsJointDist:
+                #            return (2, (b0, b1))
 
-            return (1,sortedBodies[:min(nOther,gParam.maxBuildEdges)])  
+                return (1,sortedBodies[:min(nOther,gParam.maxBuildEdges)])  
 
 
 

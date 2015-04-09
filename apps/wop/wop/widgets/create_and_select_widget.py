@@ -61,11 +61,10 @@ class SimpleSelector(WorldManipulator):
 
 
 class GooCreator(WorldManipulator):
-    def __init__(self,gooCls):
-        super(RoundGooCreator,self).__init__()
-        self.gooCls = gooCls
-
-        self.tentativeGoo = self.gooCls()
+    def __init__(self):
+        super(GooCreator,self).__init__()
+        self.gooCls = None
+        self.tentativeGoo = None
         self.wpos = None
 
     def _canBeAdded(self):
@@ -73,13 +72,12 @@ class GooCreator(WorldManipulator):
         r = self.level.gooGraph.canGooBeAdded(self.tentativeGoo, self.wpos)
         return r
     def world_on_touch_down(self, wpos, touch):
-        #Logger.debug("RoundGooCreator: touch  down %.1f %.1f"%wpos ) 
+        self.tentativeGoo = self.gooCls()
         self.wpos = wpos
     def world_on_touch_move(self, wpos, wppos, touch):
         #Logger.debug("RoundGooCreator: touch  move %.1f %.1f"%wpos ) 
         self.wpos = wpos
     def world_on_touch_up(self, wpos, touch):
-        print "TOUCH UP"
         #Logger.debug("RoundGooCreator: touch  up %.1f %.1f"%wpos ) 
         self.wpos = wpos
         addAs,otherGoosBodies = self._canBeAdded()
@@ -93,111 +91,16 @@ class GooCreator(WorldManipulator):
             b0,b1 = otherGoosBodies
             self.level.connectGoos(b0.userData, b1.userData)
         self.wpos = None
+        self.tentativeGoo  = None
 
     def render(self):
-        if self.wpos is not None:
+        if self.wpos is not None and self.tentativeGoo is not None:
             addAs,otherGoos = self._canBeAdded()
             if addAs <= 1:
                 self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
             else:
                 pass
 
-class RoundGooCreator(GooCreator):
-    def __init__(self,gooCls):
-        super(RoundGooCreator,self).__init__()
-        self.gooCls = gooCls
-
-        self.tentativeGoo = self.gooCls()
-        self.wpos = None
-
-    def _canBeAdded(self):
-        self.tentativeGoo.pos = self.wpos
-        r = self.level.gooGraph.canGooBeAdded(self.tentativeGoo, self.wpos)
-        return r
-    def world_on_touch_down(self, wpos, touch):
-        #Logger.debug("RoundGooCreator: touch  down %.1f %.1f"%wpos ) 
-        self.wpos = wpos
-    def world_on_touch_move(self, wpos, wppos, touch):
-        #Logger.debug("RoundGooCreator: touch  move %.1f %.1f"%wpos ) 
-        self.wpos = wpos
-    def world_on_touch_up(self, wpos, touch):
-        print "TOUCH UP"
-        #Logger.debug("RoundGooCreator: touch  up %.1f %.1f"%wpos ) 
-        self.wpos = wpos
-        addAs,otherGoosBodies = self._canBeAdded()
-        if addAs == 1:
-            goo = self.gooCls()
-            self.level.addGoo(goo, wpos)
-            if otherGoosBodies is not None:     
-                for ogb in otherGoosBodies:
-                    self.level.connectGoos(goo, ogb.userData)
-        elif addAs == 2:
-            b0,b1 = otherGoosBodies
-            self.level.connectGoos(b0.userData, b1.userData)
-        self.wpos = None
-
-    def render(self):
-        if self.wpos is not None:
-            addAs,otherGoos = self._canBeAdded()
-            if addAs <= 1:
-                self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
-            else:
-                pass
-
-class BlackGooCreator(GooCreator):
-    def __init__(self):
-        super(BlackGooCreator,self).__init__(gooCls= BlackGoo)
-        #self.gooCls = BlackGoo
-
-class GreenGooCreator(GooCreator):
-    def __init__(self):
-        super(GreenGooCreator,self).__init__(gooCls= GreenGoo)
-        #self.gooCls = GreenGoo
-        
-class AnchorGooCreator(GooCreator):
-    def __init__(self):
-        super(AnchorGooCreator,self).__init__()
-        self.gooCls = AnchorGoo
-        self.tentativeGoo = None
-        self.wpos = None
-
-    def _canBeAdded(self):
-        #gooRadius = self.tentativeGoo.gooRadius()
-        #body = wh.body_in_bb(self.level.world, pos=self.wpos, roiRadius=gooRadius)
-        #return body is None
-        if self.tentativeGoo is None:
-            return (0,None) 
-        r = self.level.gooGraph.canGooBeAdded(self.tentativeGoo, self.wpos)
-        return r
-    def world_on_touch_down(self, wpos, touch):
-        #Logger.debug("RoundGooCreator: touch  down %.1f %.1f"%wpos ) 
-        self.tentativeGoo = self.gooCls()
-        self.wpos = wpos
-    def world_on_touch_move(self, wpos, wppos, touch):
-        #Logger.debug("RoundGooCreator: touch  move %.1f %.1f"%wpos ) 
-        self.wpos = wpos
-    def world_on_touch_up(self, wpos, touch):
-        #Logger.debug("RoundGooCreator: touch  up %.1f %.1f"%wpos ) 
-        addAs,otherGoosBodies = self._canBeAdded()
-        if addAs == 1:
-            goo = self.gooCls()
-            self.level.addGoo(goo, wpos)
-            if otherGoosBodies is not None:     
-                for ogb in otherGoosBodies:
-                    self.level.connectGoos(goo, ogb.userData)
-        if addAs == 2:
-            b0,b1 = otherGoosBodies
-            self.level.connectGoos(b0.userData, b1.userData)
-        self.tentativeGoo = None
-        self.wpos = None
-
-    def render(self):
-        if self.tentativeGoo is not None and self.wpos is not None:
-            addAs,otherGoos = self._canBeAdded()
-            if addAs <= 1:
-                self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
-            else:
-                pass
 
 class KillSelector(WorldManipulator):
     def __init__(self):
@@ -216,9 +119,8 @@ class WorldManipulatorManager(object):
         self.killSelector = KillSelector()
 
         # goo creators
-        self.blackGooCreator = BlackGooCreator()
-        self.greenGooCreator = GreenGooCreator()
-        self.anchorGooCreator = AnchorGooCreator()
+        self.gooCreator = GooCreator()
+
 
         # set current
         self.wm = self.simpleSelector
@@ -315,10 +217,11 @@ class CreateAndSelectWidget(BoxLayout):
             self.wmManager.wm = self.wmManager.killSelector
         self.wmManager.passLevelToCurrentWm()
     def on_release_creator_button(self , objectType):
+        self.wmManager.wm = self.wmManager.gooCreator
         if objectType == "black-goo":
-            self.wmManager.wm = self.wmManager.blackGooCreator
+            self.wmManager.wm.gooCls = BlackGoo
         elif objectType == "green-goo":
-            self.wmManager.wm = self.wmManager.greenGooCreator
+           self.wmManager.wm.gooCls = GreenGoo
         elif objectType == "anchor-goo":
-            self.wmManager.wm = self.wmManager.anchorGooCreator
+            self.wmManager.wm.gooCls = AnchorGoo
         self.wmManager.passLevelToCurrentWm()
