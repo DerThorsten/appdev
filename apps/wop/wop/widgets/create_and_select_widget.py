@@ -61,18 +61,46 @@ class SimpleSelector(WorldManipulator):
 
 
 class GooCreator(WorldManipulator):
-    def __init__(self):
-        super(GooCreator,self).__init__()
+    def __init__(self,gooCls):
+        super(RoundGooCreator,self).__init__()
+        self.gooCls = gooCls
 
+        self.tentativeGoo = self.gooCls()
+        self.wpos = None
+
+    def _canBeAdded(self):
+        self.tentativeGoo.pos = self.wpos
+        r = self.level.gooGraph.canGooBeAdded(self.tentativeGoo, self.wpos)
+        return r
     def world_on_touch_down(self, wpos, touch):
-        #Logger.debug("GooCreator: touch  down %.1f %.1f"%wpos ) 
-        pass
+        #Logger.debug("RoundGooCreator: touch  down %.1f %.1f"%wpos ) 
+        self.wpos = wpos
     def world_on_touch_move(self, wpos, wppos, touch):
-        #Logger.debug("GooCreator: touch  move %.1f %.1f"%wpos ) 
-        pass
+        #Logger.debug("RoundGooCreator: touch  move %.1f %.1f"%wpos ) 
+        self.wpos = wpos
     def world_on_touch_up(self, wpos, touch):
-        #Logger.debug("GooCreator: touch  up %.1f %.1f"%wpos )
-        pass
+        print "TOUCH UP"
+        #Logger.debug("RoundGooCreator: touch  up %.1f %.1f"%wpos ) 
+        self.wpos = wpos
+        addAs,otherGoosBodies = self._canBeAdded()
+        if addAs == 1:
+            goo = self.gooCls()
+            self.level.addGoo(goo, wpos)
+            if otherGoosBodies is not None:     
+                for ogb in otherGoosBodies:
+                    self.level.connectGoos(goo, ogb.userData)
+        elif addAs == 2:
+            b0,b1 = otherGoosBodies
+            self.level.connectGoos(b0.userData, b1.userData)
+        self.wpos = None
+
+    def render(self):
+        if self.wpos is not None:
+            addAs,otherGoos = self._canBeAdded()
+            if addAs <= 1:
+                self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
+            else:
+                pass
 
 class RoundGooCreator(GooCreator):
     def __init__(self,gooCls):
@@ -116,12 +144,12 @@ class RoundGooCreator(GooCreator):
             else:
                 pass
 
-class BlackGooCreator(RoundGooCreator):
+class BlackGooCreator(GooCreator):
     def __init__(self):
         super(BlackGooCreator,self).__init__(gooCls= BlackGoo)
         #self.gooCls = BlackGoo
 
-class GreenGooCreator(RoundGooCreator):
+class GreenGooCreator(GooCreator):
     def __init__(self):
         super(GreenGooCreator,self).__init__(gooCls= GreenGoo)
         #self.gooCls = GreenGoo

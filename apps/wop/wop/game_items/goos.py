@@ -260,16 +260,16 @@ class AnchorGoo(Goo):
         poly   = b2PolygonShape(vertices=self.verts)
         circle = b2CircleShape(radius=rad ,pos=circlePos)
 
-        shapes = [poly,circle]
+        fdef = b2FixtureDef(density=param.density,
+                            friction=param.friction)
 
-        fdef = b2FixtureDef(shape=poly,
-            density=param.density,
-            friction=param.friction
-        )
         self.body = world.CreateBody(type=b2_dynamicBody,
-                                        position=pos,
-                                        shapes=shapes,
-                                        shapeFixture=fdef)
+                                     position=pos,
+                                     shapes=[poly,circle],
+                                     shapeFixture=fdef,
+                                     angularDamping=param.angularDamping,
+                                     linearDamping=param.linearDamping)
+
         self.body.userData = self
 
     def localAnchor(self):
