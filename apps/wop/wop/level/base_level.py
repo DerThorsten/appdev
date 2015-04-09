@@ -90,7 +90,7 @@ class GooGraph(nx.Graph):
         # try to add the goo as edge first
         if nGoos >= 2 :
             rad = gParam.addAsJointRadius
-            #Logger.debug("radius %f"%rad)
+            
             # find all goos in range
             query = FindAllGoos(pos,
                                 minDist=0,
@@ -101,52 +101,52 @@ class GooGraph(nx.Graph):
             self.world.QueryAABB(query, aabb)
             dists, sortedBodies = query.sortedBodies()
             nOther = len(dists)
-            #Logger.debug("found #goos %d"%nOther)
-
+            
+            # can this goo be directly added as joint
+            # (and are enough goos there)
             if gParam.canBeAddedAsJoint and nOther>=2:
 
+                # remember the best matching two
+                # goos which connecting line
+                # has the minimal distance 
+                # to the users clicked position
                 bestDist = float('inf')
                 bestPair = None
 
-                for i0 in range(nOther-1):
+                # loop over all pairs
+                useN = min(nOther, 3)
+                for i0 in range(useN-1):
                     b0 = sortedBodies[i0]
                     goo0 = b0.userData
-                    for i1 in range(i0+1,nOther):
+                    for i1 in range(i0+1,useN):
                         b1 = sortedBodies[i1]
                         goo1 = b1.userData
+
+                        # only goos which are not yet connected can be connected
                         if not self.has_edge(goo0,goo1):
                             p0 = b0.GetWorldPoint(b2Vec2(*goo0.localAnchor()))
                             p1 = b1.GetWorldPoint(b2Vec2(*goo1.localAnchor()))
 
-                            # todo, check that click is in bounding box of
-                            # p0 and p1
-
+          
                             lineDist = distToLine((p0,p1), pos)
-                            
                             if lineDist < bestDist:
                                 bestDist = lineDist
                                 bestPair = (b0, b1)
                 if bestDist <  gParam.addAsJointDist:
                     return (2, bestPair)
 
-
-
-
-
-
-
-
-
-        gooDist = gParam.maxGooDist*1.2
+        #  from here on it is ensured
+        # that the goo cannot be added as joint
+        # if there are no goos
+        # at all we do not need
         if nGoos==0:
             return (1,None)
-        #if nGoos == 1:
-        #    return (1,None)
         else :
             # find all goos in range
+            mxDst = gParam.maxGooDist
             query = FindAllGoos(pos, minDist=gParam.minGooDist,
                                 maxDist=gParam.maxGooDist)
-            aabb = b2AABB(lowerBound=pos-(gooDist, gooDist), upperBound=pos+(gooDist, gooDist))
+            aabb = b2AABB(lowerBound=pos-(mxDst, mxDst), upperBound=pos+(mxDst, mxDst))
             self.world.QueryAABB(query, aabb)
 
             dists, sortedBodies = query.sortedBodies()
@@ -167,13 +167,6 @@ class GooGraph(nx.Graph):
                 b1 = sortedBodies[1]
                 g0 = b0.userData
                 g1 = b1.userData
-
-                #if gParam.canBeAddedAsJoint:
-                #    if not self.has_edge(g0,g1):
-                #        lineDist = distToLine((b0.position,b1.position), pos)
-                #        #print "LINEDIST ",lineDist
-                #        if lineDist < gParam.addAsJointDist:
-                #            return (2, (b0, b1))
 
                 return (1,sortedBodies[:min(nOther,gParam.maxBuildEdges)])  
 
