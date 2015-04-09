@@ -51,15 +51,15 @@ class DebugDraw(CanvasDraw):
                 xf  =  body.transform
                 for f in fixtures:
                     if body.active==False :
-                        self.drawShape(f, xf, (0.5, 0.5, 0.3) )
+                        self.drawShape(f, xf, (0.5, 0.5, 0.3, 0.7) )
                     elif btype == b2_staticBody:
-                        self.drawShape(f, xf, (0.5, 0.9, 0.5) )
+                        self.drawShape(f, xf, (0.5, 0.9, 0.5, 0.7) )
                     elif btype == b2_kinematicBody:
-                        self.drawShape(f, xf, (0.5, 0.5, 0.5) )
+                        self.drawShape(f, xf, (0.5, 0.5, 0.5, 0.7) )
                     elif body.awake==False:
-                        self.drawShape(f, xf, (0.6, 0.6, 0.6) )
+                        self.drawShape(f, xf, (0.6, 0.6, 0.6, 0.7) )
                     else :
-                        self.drawShape(f, xf, (0.9, 0.7, 0.7) )
+                        self.drawShape(f, xf, (0.9, 0.7, 0.7, 0.7) )
 
             for joint in self.world.joints:
                 self.drawJoint(joint)
