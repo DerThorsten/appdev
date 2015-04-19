@@ -1,63 +1,24 @@
 from abc import ABCMeta ,abstractmethod
 from Box2D import *
+from kivy.logger import Logger
 
 class GameItem(object):
+    __metaclass__ = ABCMeta
+
     def __init__(self):
         pass
-
-
-
-class NewGameItem(object):
-    def __init__(self):
-        pass
-    
-
-    @abstractmethod
-    def bounding_box_size(self):
-        pass
-
-    @abstractmethod    
-    def bounding_box_pos(self):
-        pass
-
-
-
-
-class PhysicalGameItem(NewGameItem):
-
-    @abstractmethod
-    def shape(self):
-        """
-            vertices or b2Shapes.
-
-            The shape is always in a local coordinate
-            system. 
-            This mean the position of the body is at zero
-            and the body has a 
-        """
-        pass
-
-    @abstractmethod
-    def pos(self):
-        """
-            global position of the object
-        """
-        pass
+    def world_on_touch_down(self, wpos, touch):
+        Logger.debug("GameItem down")
+    def world_on_touch_move(self, wpos, wppos, touch):
+        Logger.debug("GameItem move")
+    def world_on_touch_up(self, wpos, touch):
+        Logger.debug("GameItem   up")
 
 
     @abstractmethod
-    def angle(self):
-        """ Angle of the shape:
-
-            Angle with respect to the local anchor
-        """
+    def add_to_level(self, world, pos, angle, scale):
         pass
 
-  
-    @abstractmethod
-    def bounding_box_size(self):
-        pass
 
-    @abstractmethod
-    def bounding_box_pos(self):
+    def remove_from_world(self):
         pass

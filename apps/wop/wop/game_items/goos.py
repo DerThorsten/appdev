@@ -12,7 +12,7 @@ from kivy.graphics import *
 from kivy.core.audio import SoundLoader
 
 from wop import CanvasDraw, DebugDraw
-from wop import renderDistanceJoint,renderRectangle
+from wop import renderDistanceJoint,renderRectangle,renderDistanceJointTentative
 
 class GooParam(object):
     def __init__(self,
@@ -72,19 +72,78 @@ class GooParam(object):
 
 
 
+class Joint(GameItem):
+    __metaclass__ = ABCMeta
+    def __init__(self):
+        super(Joint, self).__init__()
+        self.joint = None
+
+    @abstractmethod
+    def add_to_level(self,level, gameItemA, gameItemB):
+        pass
+
+
+    def render(self, gr):
+        renderDistanceJoint(self.joint)
+
+    def render_tentative(self, gr, pA, pB):
+        renderDistanceJointTentative(pA,pB)
+
+
+class GooJoint(Joint):
+    def __init__(self):
+        super(GooJoint, self).__init__()
+    @abstractmethod
+    def add_to_level(self,level, gameItemA, gameItemB):
+        pass
+
+class GooDistanceJoint(Joint):
+    def __init__(self):
+        super(GooDistanceJoint, self).__init__()
+        self.joint = None
+
+    def add_to_level(self,level, gameItemA, gameItemB):
+        gA = gameItemA
+        gB = gameItemB
+        world = level.world
+        gooGraph = level.gooGraph
+        assert isinstance(gA,GameItem)
+        assert isinstance(gB,GameItem)
+
+        # take param from first goo (so far)
+        gParam  = gA.param()
+        dfn=b2DistanceJointDef(
+           frequencyHz=gParam.frequencyHz,
+           dampingRatio=gParam.dampingRatio,
+           bodyA=gA.body,bodyB=gB.body,
+           localAnchorA=gA.localAnchor(),
+           localAnchorB=gB.localAnchor()
+        )
+        self.joint = world.CreateJoint(dfn)
+        self.joint.userData = self
+        if gParam.autoExpanding:
+            self.joint.length = gParam.expandingDist
+        # add edge to gooGraph
+        level.game_items.add(self.joint)
+        gooGraph.add_edge(gA, gB, joint=self.joint)
+        
+
+
 
 class Goo(GameItem):
     __metaclass__ = ABCMeta
     def __init__(self):
         super(Goo, self).__init__()
 
-    def renderJoint(self,gr, joint, otherGoo):
-        renderDistanceJoint(joint, color=(1,1,1,1), width=0.3)
+    #def renderJoint(self,gr, joint, otherGoo):
+    #    renderDistanceJoint(joint, color=(1,1,1,1), width=0.3)
 
     def localAnchor(self):
         return b2Vec2(0,0)
 
 
+    def createJoint(self):
+        return GooDistanceJoint()
     
 
 class RoundGoo(Goo):
@@ -123,7 +182,7 @@ class RoundGoo(Goo):
 
             
 
-    def addToWorld(self, world, pos):
+    def add_to_level(self, world, pos, angle=0.0, scale=1.0):
         param = self.param()
         assert param.gooSize[0] == param.gooSize[1]
         radius = param.gooSize[0]/2.0
@@ -145,8 +204,8 @@ class BlackGoo(RoundGoo):
     _gooTexture = _gooImg.texture
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
 
-    def renderJoint(self,gr, joint, otherGoo):
-        renderDistanceJoint(joint, color=(0.2,0.2,0.2,1), width=0.3)
+    #def renderJoint(self,gr, joint, otherGoo):
+    #    renderDistanceJoint(joint, color=(0.2,0.2,0.2,1), width=0.3)
 
     @classmethod
     def playBuildSound(cls):
@@ -169,8 +228,8 @@ class GreenGoo(RoundGoo):
     _gooTexture = _gooImg.texture
     _gooParam = GooParam()
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
-    def renderJoint(self,gr, joint, otherGoo):
-        renderDistanceJoint(joint, color=(0.2,1,0.2,1), width=0.3)
+    #def renderJoint(self,gr, joint, otherGoo):
+    #    renderDistanceJoint(joint, color=(0.2,1,0.2,1), width=0.3)
 
     @classmethod
     def playBuildSound(cls):
@@ -207,8 +266,8 @@ class AnchorGoo(Goo):
     def gooTexture(cls):
         return AnchorGoo._gooTexture
 
-    def renderJoint(self,gr, joint, otherGoo):
-        renderDistanceJoint(joint, color=(0.2,0.1,0.2,1), width=0.3)
+    #def renderJoint(self,gr, joint, otherGoo):
+    #    renderDistanceJoint(joint, color=(0.2,0.1,0.2,1), width=0.3)
 
     def render(self, level):
         self.render_it(level, self.body.position, degrees(self.body.angle))
@@ -227,7 +286,7 @@ class AnchorGoo(Goo):
             e = Rectangle(pos=pos,size=param.gooSize,color=Color(1,0,0,0.3))
             
 
-    def addToWorld(self, world, pos):
+    def add_to_level(self, world, pos, angle=0.0, scale=1.0):
         param = self.param()
         sx,sy = param.gooSize
         assert sx == sy

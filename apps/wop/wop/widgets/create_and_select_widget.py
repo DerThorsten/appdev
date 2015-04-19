@@ -68,17 +68,20 @@ class GooCreator(WorldManipulator):
         self.wpos = None
 
     def _canBeAdded(self):
+        if self.tentativeGoo is None:
+            return (0,None)
         self.tentativeGoo.pos = self.wpos
         r = self.level.gooGraph.canGooBeAdded(self.tentativeGoo, self.wpos)
         return r
     def world_on_touch_down(self, wpos, touch):
+        Logger.debug("RoundGooCreator: touch  down %.1f %.1f"%wpos ) 
         self.tentativeGoo = self.gooCls()
         self.wpos = wpos
     def world_on_touch_move(self, wpos, wppos, touch):
-        #Logger.debug("RoundGooCreator: touch  move %.1f %.1f"%wpos ) 
+        Logger.debug("RoundGooCreator: touch  move %.1f %.1f"%wpos ) 
         self.wpos = wpos
     def world_on_touch_up(self, wpos, touch):
-        #Logger.debug("RoundGooCreator: touch  up %.1f %.1f"%wpos ) 
+        Logger.debug("RoundGooCreator: touch  up %.1f %.1f"%wpos ) 
         self.wpos = wpos
         addAs,otherGoosBodies = self._canBeAdded()
         if addAs == 1:
@@ -86,21 +89,42 @@ class GooCreator(WorldManipulator):
             self.level.addGoo(goo, wpos)
             if otherGoosBodies is not None:     
                 for ogb in otherGoosBodies:
-                    self.level.connectGoos(goo, ogb.userData)
+                    jointGameItem = goo.createJoint()
+                    jointGameItem.add_to_level(self.level, goo, ogb.userData)
+                    #self.level.connectGoos(goo, ogb.userData)
         elif addAs == 2:
             b0,b1 = otherGoosBodies
-            self.level.connectGoos(b0.userData, b1.userData)
+            jointGameItem = self.tentativeGoo.createJoint()
+            jointGameItem.add_to_level(self.level, b0.userData, b1.userData)
+
         self.wpos = None
         self.tentativeGoo  = None
 
     def render(self):
         if self.wpos is not None and self.tentativeGoo is not None:
-            addAs,otherGoos = self._canBeAdded()
+            gr = self.level.gameRender
+            addAs,otherGoosBodies = self._canBeAdded()
             if addAs <= 1:
+                #render connections/joints
+                if otherGoosBodies is not None:
+                    for ogb in otherGoosBodies:
+                        jointGameItem = self.tentativeGoo.createJoint()
+                        otherGoo = ogb.userData
+                        posB  = ogb.GetWorldPoint(b2Vec2(*otherGoo.localAnchor()))
+                        posA  = b2Vec2(self.wpos) + otherGoo.localAnchor()
+                        jointGameItem.render_tentative(gr, posA, posB)
+                # render the goo
                 self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
             else:
-                pass
+                ogbA = otherGoosBodies[0]                    
+                ogbB = otherGoosBodies[1]     
+                ogA = ogbA.userData             
+                ogB = ogbB.userData
 
+                posA  = ogbA.GetWorldPoint(b2Vec2(*ogA.localAnchor()))
+                posB  = ogbB.GetWorldPoint(b2Vec2(*ogB.localAnchor()))
+                jointGameItem = self.tentativeGoo.createJoint()
+                jointGameItem.render_tentative(gr, posA, posB)
 
 class KillSelector(WorldManipulator):
     def __init__(self):
@@ -221,6 +245,7 @@ class CreateAndSelectWidget(BoxLayout):
         if objectType == "black-goo":
             self.wmManager.wm.gooCls = BlackGoo
         elif objectType == "green-goo":
+           Logger.debug("green goo")
            self.wmManager.wm.gooCls = GreenGoo
         elif objectType == "anchor-goo":
             self.wmManager.wm.gooCls = AnchorGoo

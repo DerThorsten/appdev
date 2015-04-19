@@ -205,13 +205,13 @@ class BaseLevel(object):
 
         self.wmManager = None
         self.gooGraph = GooGraph(self)
+        self.game_items = set()
         self.mouseJoint = None
-
-
-
 
         self.is_scheduled = False
         self.was_scheduled_bevore_global_pause = False
+
+        self.currentGameItem = None
     ###############################
     # events
     ###############################
@@ -248,6 +248,10 @@ class BaseLevel(object):
         body = wop.body_at_pos(self.world, pos=wpos)
 
         if body is not None:
+            gameItem = body.userData
+            if isinstance(gameItem, GameItem):
+                self.currentGameItem = gameItem
+                gameItem.world_on_touch_down(wpos, touch)
 
             self.mouseJoint = self.world.CreateMouseJoint(
                 bodyA=self.groundBody,
@@ -262,13 +266,22 @@ class BaseLevel(object):
 
     def world_on_touch_move(self, wpos, wppos, touch):
         #Logger.debug("Level: touch move %.1f %.1f"%wpos ) 
-        
+        gameItem = self.currentGameItem
+        if gameItem is not None:
+            gameItem.world_on_touch_move(wpos, wppos, touch)
+
+
         if self.mouseJoint is not None:
             self.mouseJoint.target  =  wpos
         else :
             self.wmManager.world_on_touch_move(wpos, wppos, touch)
 
     def world_on_touch_up(self, wpos, touch):
+        gameItem = self.currentGameItem
+        if gameItem is not None:
+            gameItem.world_on_touch_up(wpos, touch)
+            self.currentGameItem = None
+
         if self.mouseJoint is not None:
             self.world.DestroyJoint(self.mouseJoint)
             self.mouseJoint = None
@@ -319,23 +332,23 @@ class BaseLevel(object):
 
     def addGoo(self, goo, pos):
         goo.playBuildSound()
-        goo.addToWorld(self.world, pos)
+        goo.add_to_level(self.world, pos)
         self.gooGraph.add_node(goo)
 
-    def connectGoos(self, gooA, gooB):
-        # take param from first goo (so far)
-        gParam  = gooA.param()
-        dfn=b2DistanceJointDef(
-           frequencyHz=gParam.frequencyHz,
-           dampingRatio=gParam.dampingRatio,
-           bodyA=gooA.body,bodyB=gooB.body,
-           localAnchorA=gooA.localAnchor(),
-           localAnchorB=gooB.localAnchor()
-        )
-        j=self.world.CreateJoint(dfn)
-        if gParam.autoExpanding:
-            j.length = gParam.expandingDist
-        self.gooGraph.add_edge(gooA, gooB, joint=j)
+    #def connectGoos(self, gooA, gooB):
+    #    # take param from first goo (so far)
+    #    gParam  = gooA.param()
+    #    dfn=b2DistanceJointDef(
+    #       frequencyHz=gParam.frequencyHz,
+    #       dampingRatio=gParam.dampingRatio,
+    #       bodyA=gooA.body,bodyB=gooB.body,
+    #       localAnchorA=gooA.localAnchor(),
+    #       localAnchorB=gooB.localAnchor()
+    #    )
+    #    j=self.world.CreateJoint(dfn)
+    #    if gParam.autoExpanding:
+    #        j.length = gParam.expandingDist
+    #    self.gooGraph.add_edge(gooA, gooB, joint=j)
         
     def render(self):
         gr = self.gameRender
@@ -362,7 +375,10 @@ class BaseLevel(object):
             for e in self.gooGraph.edges(data=True):
                 (gooA,gooB,d) = e
                 j=d['joint']
-                gooA.renderJoint(gr,j,gooB)      
+                jGameItem = j.userData
+                assert isinstance(jGameItem, Joint)
+                jGameItem.render(gr)
+                #gooA.renderJoint(gr,j,gooB)      
                 #gooB.renderJoint(gr,j,gooA)  
         def renderAllGoos():
             for goo in self.gooGraph.nodes():
@@ -373,7 +389,7 @@ class BaseLevel(object):
         # builder/adder tentative render
         # if and only if there is NO mouse joint
         if self.mouseJoint is None:
-            gr.add_render_item(self.wmManager.render, z=4)
+            gr.add_render_item(self.wmManager.render, z=3)
 
         # do the actual rendering
         gr.render()
