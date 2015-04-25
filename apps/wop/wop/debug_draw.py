@@ -124,16 +124,18 @@ class DebugDraw(CanvasDraw):
             pass
         elif(isinstance(joint,b2DistanceJoint)):
             self.drawSegment(pa, pb, color)
+        elif(isinstance(joint,b2RopeJoint)):
+            self.drawSegment(pa, pb, color)
         elif(isinstance(joint,b2PulleyJoint)):
             gA = joint.groundAnchorA
             gB = joint.groundAnchorA
-            self.drawSegment(gA, pA, color)
-            self.drawSegment(gB, pB, color)
+            self.drawSegment(gA, pa, color)
+            self.drawSegment(gB, pb, color)
             self.drawSegment(gA, gB, color)
         elif(isinstance(joint,b2MouseJoint)):
             pass
         else:
-            self.drawSegment(xA, pA, color)
-            self.drawSegment(pA, pB, color)
-            self.drawSegment(xB, pB, color)
+            self.drawSegment(xa, pa, color)
+            self.drawSegment(pa, pa, color)
+            self.drawSegment(xb, pb, color)
 

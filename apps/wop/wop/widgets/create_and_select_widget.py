@@ -111,7 +111,7 @@ class GooCreator(WorldManipulator):
                         jointGameItem = self.tentativeGoo.createJoint()
                         otherGoo = ogb.userData
                         posB  = ogb.GetWorldPoint(b2Vec2(*otherGoo.localAnchor()))
-                        posA  = b2Vec2(self.wpos) + otherGoo.localAnchor()
+                        posA  = b2Vec2(self.wpos) + self.tentativeGoo.localAnchor()
                         jointGameItem.render_tentative(gr, posA, posB)
                 # render the goo
                 self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
@@ -220,6 +220,15 @@ Builder.load_string("""
                         y: self.parent.y #+ self.parent.height - 30
                         x: self.parent.x
                         source: 'res/amboss_goo_128.png'
+                Button:
+                    id: balloonGooButton
+                    text: "BG"
+                    on_release: root.on_release_creator_button("ballon-goo")
+                    Image:
+                        size: (self.parent.size[0], self.parent.size[1])
+                        y: self.parent.y
+                        x: self.parent.x
+                        source: 'res/pink_goo_128.png'
 """)
 class CreateAndSelectWidget(BoxLayout):
 
@@ -249,4 +258,6 @@ class CreateAndSelectWidget(BoxLayout):
            self.wmManager.wm.gooCls = GreenGoo
         elif objectType == "anchor-goo":
             self.wmManager.wm.gooCls = AnchorGoo
+        elif objectType == "ballon-goo":
+            self.wmManager.wm.gooCls = BallonGoo
         self.wmManager.passLevelToCurrentWm()

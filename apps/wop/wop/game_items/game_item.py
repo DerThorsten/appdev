@@ -15,10 +15,17 @@ class GameItem(object):
         Logger.debug("GameItem   up")
 
 
-    @abstractmethod
+    #@abstractmethod
     def add_to_level(self, world, pos, angle, scale):
         pass
 
 
     def remove_from_world(self):
         pass
+
+
+class GooDestroyerItem(GameItem):
+    def __init__(self):
+        super(GooDestroyerItem,self).__init__()
+        self.body = None
+

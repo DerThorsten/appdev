@@ -9,14 +9,16 @@ from wop.game_items import *
 import wop
 from kivy.config import Config
 from kivy.app import App
+from wop.game_items import GameItem,GooDestroyerItem
 
 class FindAllGoos(Box2D.b2QueryCallback):
-    def __init__(self, pos, minDist, maxDist,verbose=False): 
+    def __init__(self, pos, minDist, maxDist,gooGraph,verbose=False): 
         super(FindAllGoos, self).__init__()
         self.pos = pos
         self.minDist = minDist
         self.maxDist = maxDist
         self.dists  = dict()
+        self.gooGraph = gooGraph
         self.verbose = verbose
     def ReportFixture(self, fixture):
         body = fixture.body
@@ -24,13 +26,15 @@ class FindAllGoos(Box2D.b2QueryCallback):
             ud = body.userData 
             if self.verbose : print "found goo"
             if(isinstance(ud,Goo)):
-                if body not in self.dists:
-                    #print "body pos",body.position, "local anchor ",ud.localAnchor()
-                    #print "wpos ",body.GetWorldPoint(b2Vec2(*ud.localAnchor())),"\n"
-                    d = self.pos - body.GetWorldPoint(b2Vec2(*ud.localAnchor())) #position
-                    d = d.length
-                    if d>=self.minDist and d<=self.maxDist:
-                        self.dists[body] = d
+                currentDegree = self.gooGraph.degree(ud)
+                if currentDegree+1 < ud.param().maxEdges :
+                    if body not in self.dists:
+                        #print "body pos",body.position, "local anchor ",ud.localAnchor()
+                        #print "wpos ",body.GetWorldPoint(b2Vec2(*ud.localAnchor())),"\n"
+                        d = self.pos - body.GetWorldPoint(b2Vec2(*ud.localAnchor())) #position
+                        d = d.length
+                        if d>=self.minDist and d<=self.maxDist:
+                            self.dists[body] = d
         return True
 
     def sortedBodies(self):
@@ -94,7 +98,8 @@ class GooGraph(nx.Graph):
             # find all goos in range
             query = FindAllGoos(pos,
                                 minDist=0,
-                                maxDist=rad,verbose=False)
+                                maxDist=rad,gooGraph=self,
+                                verbose=False)
             lb = lowerBound=pos-(rad, rad)
             ub = lowerBound=pos+(rad, rad)
             aabb = b2AABB(lowerBound=lb, upperBound=ub)
@@ -145,7 +150,7 @@ class GooGraph(nx.Graph):
             # find all goos in range
             mxDst = gParam.maxGooDist
             query = FindAllGoos(pos, minDist=gParam.minGooDist,
-                                maxDist=gParam.maxGooDist)
+                                maxDist=gParam.maxGooDist,gooGraph=self)
             aabb = b2AABB(lowerBound=pos-(mxDst, mxDst), upperBound=pos+(mxDst, mxDst))
             self.world.QueryAABB(query, aabb)
 
@@ -180,7 +185,7 @@ class LevelDestructionListener(b2DestructionListener):
     """
     def __init__(self,level, **kwargs):
         super(LevelDestructionListener, self).__init__(**kwargs)
-
+        self.level = level
     def SayGoodbye(self, pobject):
         if isinstance(pobject, b2Joint):
             if self.level.mouseJoint==pobject:
@@ -188,16 +193,62 @@ class LevelDestructionListener(b2DestructionListener):
             else:
                 self.level.joint_destroyed(pobject)
         elif isinstance(pobject, b2Fixture):
-            self.level.FixtureDestroyed(pobject)
+            #self.level.FixtureDestroyed(pobject)
+            pass
+
+class LevelContactListener(b2ContactListener):
+    def __init__(self, level):
+        b2ContactListener.__init__(self)
+        self.level = level
+    def BeginContact(self, contact):
+        """
+        This is a critical function when there are many contacts in the world.
+        It should be optimized as much as possible.
+        """
+        pass
+        
+    def EndContact(self, contact):
+        pass
+    def PreSolve(self, contact, oldManifold):
+        worldManifold=contact.worldManifold
+        state1, state2 = b2GetPointStates(oldManifold, contact.manifold)
+
+        bodyA=contact.fixtureA.body
+        bodyB=contact.fixtureB.body
+        
+        udA = bodyA.userData
+        udB = bodyB.userData
+
+
+
+
+
+        if isinstance(udA, Goo) and isinstance(udB, GooDestroyerItem):
+            # destroy udA
+            self.level.toDeleteGoos.add(udA)
+        elif isinstance(udB, Goo) and isinstance(udA, GooDestroyerItem):
+            # destroy udA
+            self.level.toDeleteGoos.add(udB)
+
+
+    def PostSolve(self, contact, impulse):
+        pass
+
 
 
 
 class BaseLevel(object):
+
+
+
     def __init__(self,world, gameRender):
 
         self.world = world
         self.destructionListener = LevelDestructionListener(level=self)
+        self.contactListener = LevelContactListener(level=self)
+
         self.world.destructionListener=self.destructionListener
+        self.world.contactListener= self.contactListener
 
 
         self.gameRender = gameRender
@@ -212,6 +263,20 @@ class BaseLevel(object):
         self.was_scheduled_bevore_global_pause = False
 
         self.currentGameItem = None
+    
+
+        self.toDeleteGoos = set()
+
+    def removeGoo(self, goo):
+        print "remove gooo"
+        for e in self.gooGraph.edges_iter(goo,data=True):
+                j = e[2]['joint']
+                self.world.DestroyJoint(j)
+                
+        self.gooGraph.remove_node(goo)
+        self.world.DestroyBody(goo.body)
+
+
     ###############################
     # events
     ###############################
@@ -328,7 +393,11 @@ class BaseLevel(object):
     def update(self, dt):
         self.world.Step(dt,5,5)
     def postUpdate(self, dt):
-        pass
+        for g in self.toDeleteGoos:
+            self.removeGoo(g)
+
+        self.toDeleteGoos.clear()
+
 
     def addGoo(self, goo, pos):
         goo.playBuildSound()

@@ -11,39 +11,37 @@ from math import degrees,atan2,pi
 
 
 def renderDistanceJointTentative(pa, pb, color=(0.2,0.2,0.2,0.1), width=0.3):
-    pl = [pa[0],pa[1], pb[0], pb[1]]
-    #Line(points=pl, width=width, color=Color(*color))
+    if True:
+        pl = [pa[0],pa[1], pb[0], pb[1]]
+        Line(points=pl, width=width, color=Color(*color))
+    else:
+        d = pb-pa
+        a = atan2(d[1], d[0])+pi
+        aDegrees = degrees(a)
+        
+        PushMatrix()
+        rot = Rotate()
+        rot.axis = (0,0,1)
+        rot.origin = pa
+        rot.angle = aDegrees+180
 
-    d = pb-pa
-    a = atan2(d[1], d[0])+pi
+        nR = d.length/(2*pi)
 
-    aDegrees = degrees(a)
+        nrt = 10.0
 
-    PushMatrix()
-    rot = Rotate()
-    rot.axis = (0,0,1)
-    rot.origin = pa
-    rot.angle = aDegrees+180
+        f = nR/nrt
 
-    nR = d.length/(2*pi)
+        x = numpy.linspace(0,d.length, 500)
+        y = numpy.sin(x/f)*0.5+pa[1]
+        x += pa[0]
 
-    nrt = 10.0
+        pl = []
+        for xx,yy in zip(x, y):
+            pl.append(xx)
+            pl.append(yy)
+        Line(points=pl, width=0.1, color=Color(*color))
 
-    f = nR/nrt
-
-    x = numpy.linspace(0,d.length, 500)
-    y = numpy.sin(x/f)*0.5+pa[1]
-    x += pa[0]
-
-    pl = []
-    for xx,yy in zip(x, y):
-        pl.append(xx)
-        pl.append(yy)
-    Line(points=pl, width=0.1, color=Color(*color))
-
-
-
-    PopMatrix()
+        PopMatrix()
 
 
 def renderDistanceJoint(joint, color=(0.2,0.2,0.2,1), width=0.3):
