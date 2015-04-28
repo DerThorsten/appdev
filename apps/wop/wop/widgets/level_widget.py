@@ -21,47 +21,66 @@ Builder.load_string("""
     zoom_outButton: zoom_outButton
     zoom_inButton: zoom_inButton
     createAndSelectWidget: createAndSelectWidget
-    BoxLayout:
-        opacity: 1
-        size_hint: (1, 1)
-        orientation: "horizontal"
 
+
+
+    
+        
+
+    orientation: "vertical"
+
+    LevelCanvasWidget:
+        text: "foo"
+        size_hint: (0.1,0.9)
+        id: levelCanvasWidget
+        
+ 
+
+
+
+    BoxLayout:
+        size_hint: (1, 0.1)  
+        orientation: "horizontal"
+        spacing: self.width/10.0
         CreateAndSelectWidget:
             id: createAndSelectWidget
-            size_hint: (0.15, 1)              
-            
-        BoxLayout:
-            orientation: "vertical"
-            size_hint: (1, 1)
-            size: (100,200)
-            ScrollView:
-                do_scroll: False
-                size_hint: (1, 1)
-                FloatLayout:
-                    LevelCanvasWidget:
-                        index: -3
-                        text: "foo"
-                        size_hint: (1,1)
-                        id: levelCanvasWidget
-                        
+            size_hint: (1, 1)   
 
+        BoxLayout:
+            size_hint: (0.25, 1)  
+            orientation: "horizontal"
+            spacing: self.width/10.0
             BoxLayout:
-                size_hint: (1,0.1)
-                orientation: "horizontal"
+                size_hint: (0.5, 1) 
+                orientation: 'vertical'
+                spacing: self.height/10.0
                 Button:
                     id: zoom_outButton
                     text: "-"
+                    color: (0.3,1,0.3,1)
+                    font_size: 50
+                    font_name: "CBlocks"
+                    background_color: (0,0,0,0)
                     on_release: root.zoom_out()
                 Button:
                     id: zoom_inButton
                     text: "+"
+                    color: (1,0.3,0.3,1)
+                    font_size: 50
+                    font_name: "CBlocks"
+                    background_color: (0,0,0,0)
                     on_release: root.zoom_in()
-
-                Button:
-                    id: menuButton
-                    text: "menu"
-                    on_press: root.screen_manager.current = 'main_menu_screen'
-""")
+                    
+            Button:
+                size_hint: (1, 1) 
+                id: menuButton
+                color: (0.2,0.2,0.6,1)
+                font_size: 30
+                font_name: "CBlocks"
+                text: "menu"
+                background_color: (0,0,0,0)
+                on_press: root.screen_manager.current = 'main_menu_screen'
+    """)
 
 class LevelWidget(BoxLayout):
     levelCanvasWidget = ObjectProperty(None)
@@ -141,6 +160,7 @@ class LevelWidget(BoxLayout):
         wmManager.setLevel(level = self.level)
         # start the level (start physic simulation)
         # will schedule level.updateCaller
+        self.level.level_widget = self
         self.level.start_level()
 
     def _kill_level(self):
@@ -148,3 +168,5 @@ class LevelWidget(BoxLayout):
         self.level = None
 
 
+    def level_finished(self):
+        self.screen_manager.current = 'main_menu_screen'

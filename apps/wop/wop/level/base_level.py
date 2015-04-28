@@ -205,10 +205,52 @@ class LevelContactListener(b2ContactListener):
         This is a critical function when there are many contacts in the world.
         It should be optimized as much as possible.
         """
-        pass
+        bodyA=contact.fixtureA.body
+        bodyB=contact.fixtureB.body
+        
+        udA = bodyA.userData
+        udB = bodyB.userData
+
+
+        if(udA is not None and udB is not None):
+            
+            # both goos
+            if(isinstance(udA, Goo) and isinstance(udB, Goo) ):
+                pass
+            # noo goos
+            if( not isinstance(udA, Goo) and not isinstance(udB, Goo) ):
+                pass   
+            elif isinstance(udA, GoalItem):
+                print "goal item begin contact"
+                udA.gooBeginsContact(udB)
+            elif isinstance(udB, GoalItem):
+                print "goal item begin contact"
+                udN.gooBeginsContact(udA)
+
         
     def EndContact(self, contact):
-        pass
+
+        bodyA=contact.fixtureA.body
+        bodyB=contact.fixtureB.body
+        
+        udA = bodyA.userData
+        udB = bodyB.userData
+
+
+        if(udA is not None and udB is not None):
+            
+            # both goos
+            if(isinstance(udA, Goo) and isinstance(udB, Goo) ):
+                pass
+            # noo goos
+            if( not isinstance(udA, Goo) and not isinstance(udB, Goo) ):
+                pass   
+            elif isinstance(udA, GoalItem):
+                print "goal item end contact"
+                udA.gooEndsContact(udB)
+            elif isinstance(udB, GoalItem):
+                #print "goal item end contact"
+                udN.gooEndsContact(udA)
     def PreSolve(self, contact, oldManifold):
         worldManifold=contact.worldManifold
         state1, state2 = b2GetPointStates(oldManifold, contact.manifold)
@@ -220,15 +262,28 @@ class LevelContactListener(b2ContactListener):
         udB = bodyB.userData
 
 
+        if(udA is not None and udB is not None):
 
+            # both goos
+            if(isinstance(udA, Goo) and isinstance(udB, Goo) ):
+                pass
+            # noo goos
+            if( not isinstance(udA, Goo) and not isinstance(udB, Goo) ):
+                pass   
 
-
-        if isinstance(udA, Goo) and isinstance(udB, GooDestroyerItem):
-            # destroy udA
-            self.level.toDeleteGoos.add(udA)
-        elif isinstance(udB, Goo) and isinstance(udA, GooDestroyerItem):
-            # destroy udA
-            self.level.toDeleteGoos.add(udB)
+            # destroyers
+            elif isinstance(udA, GooDestroyerItem):
+                # destroy udA
+                self.level.toDeleteGoos.add(udB)
+            elif isinstance(udB, GooDestroyerItem):
+                # destroy udA
+                self.level.toDeleteGoos.add(udA)
+            elif isinstance(udA, GoalItem):
+                print "goal item contact"
+                #udA.gooBeginsContact(udB)
+            elif isinstance(udB, GoalItem):
+                print "goal item contact"
+                #udN.gooBeginsContact(udA)
 
 
     def PostSolve(self, contact, impulse):
@@ -239,7 +294,7 @@ class LevelContactListener(b2ContactListener):
 
 class BaseLevel(object):
 
-
+    _killSound = SoundLoader.load('res/sounds/discovery3.wav')
 
     def __init__(self,world, gameRender):
 
@@ -268,14 +323,22 @@ class BaseLevel(object):
         self.toDeleteGoos = set()
 
     def removeGoo(self, goo):
+
         print "remove gooo"
         for e in self.gooGraph.edges_iter(goo,data=True):
                 j = e[2]['joint']
                 self.world.DestroyJoint(j)
-                
-        self.gooGraph.remove_node(goo)
+                self.gooGraph.remove_edge(e[0],e[1])
+        
+        goo.isKilled = True
+        goo.pos = goo.body.position
+        goo.angle = degrees(goo.body.angle)
+        def removeFromGraph(dt):
+            self.gooGraph.remove_node(goo)
+            print "gone"
+        Clock.schedule_once(removeFromGraph,0.5)
         self.world.DestroyBody(goo.body)
-
+        BaseLevel._killSound.play()
 
     ###############################
     # events
@@ -312,7 +375,7 @@ class BaseLevel(object):
     def world_on_touch_down(self, wpos, touch):
         body = wop.body_at_pos(self.world, pos=wpos)
 
-        if body is not None:
+        if False: #body is not None:
             gameItem = body.userData
             if isinstance(gameItem, GameItem):
                 self.currentGameItem = gameItem
@@ -366,6 +429,9 @@ class BaseLevel(object):
     def stop_level(self):
         Clock.unschedule(self.updateCaller)
 
+
+    def level_finished(self):
+        self.level_widget.level_finished()
     def updateCaller(self, dt):
         self.preUpdate(dt)
         self.render()

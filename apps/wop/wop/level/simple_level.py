@@ -5,8 +5,14 @@ from wop import CanvasDraw
 from kivy.graphics import Rectangle,Color
 from wop import renderDistanceJoint,renderRectangle
 from math import degrees
-from wop.game_items import GameItem,GooDestroyerItem
+from wop.game_items import *
 import numpy
+from kivy.graphics import Line,Mesh
+
+
+
+
+
 
 class SimpleLevel1(BaseLevel):
     def __init__(self, gameRender):
@@ -24,11 +30,13 @@ class SimpleLevel1(BaseLevel):
 
         self.blockSize = b2Vec2(15,15)
 
-        self.blocks = None
+        self.staticItem = []
 
 
     def initPhysics(self):  
         super(SimpleLevel1, self).initPhysics()
+
+
 
 
         s = self.s
@@ -44,50 +52,44 @@ class SimpleLevel1(BaseLevel):
                 (0.0,0.0) 
             ]
         )
-        self.platW = 50
-        self.platH = 50
-        self.gap = 50
-        platW = self.platW
-        platH = self.platH
-        gap =self.gap
-        self.groundBody.CreateEdgeChain([
-            (0,0),
-            (0,platH),
-            (platW,platH),
-            (platW,0), 
-            (0+platW+gap,0),
-            (0+platW+gap,platH),
-            (platW+platW+gap,platH),
-            (platW+platW+gap,0), 
-            (platW+platW+gap,0) 
-        ])
-
+        platW = 50
+        platH = 50
+        gap = 50
 
         
 
-        xx = numpy.linspace(0, self.gap, 200)
-       
+        #### add a few blocks
+        blockA = StaticBlock(size=(platW, platH))
+        blockA.add_to_level(level=self, pos=(0, 0))
+        blockB = StaticBlock(size=(platW, platH))
+        blockB.add_to_level(level=self, pos=(platW+gap, 0))
+        self.staticItem.append(blockA)
+        self.staticItem.append(blockB)
 
-        self.killerVerts  = [
-            (0,0),
-            (self.gap,0),
-            (self.gap,2),
-            (0,2),
-            (0,0)
-        ]
+        ##### add goal
+        goal = GoalItem()
+        goal.add_to_level(self, pos=(platW*1.5+gap-2.5, platH+50))
+        self.staticItem.append(goal)
 
-        fixtures=b2FixtureDef(
-            shape=b2PolygonShape(vertices=self.killerVerts)
-        )
-        self.killerBody = self.world.CreateBody(
-            position=(self.platW, 0),
-            fixtures=fixtures
-        )
+        # add destroyer
+        destroyer = ZigZackDestroyer(size=(gap,2),orientation='horizontal')
+        destroyer.add_to_level(level=self,pos=(platW,0))
+        self.staticItem.append(destroyer)
 
-        self.killerItem  = GooDestroyerItem()
-        self.killerBody.body = self.killerBody
-        self.killerBody.userData = self.killerItem
+        # top destroyer
+        destroyer = ZigZackDestroyer(size=(self.roi[1][0],2),orientation='horizontal')
+        destroyer.add_to_level(level=self,pos=(0,self.roi[1][1]-2))
+        self.staticItem.append(destroyer)
 
+        # left destroyer
+        destroyer = ZigZackDestroyer(size=(2,self.roi[1][1]),orientation='vertical')
+        destroyer.add_to_level(level=self,pos=(0,0))
+        self.staticItem.append(destroyer)
+
+        # right destroyer
+        destroyer = ZigZackDestroyer(size=(2,self.roi[1][1]),orientation='vertical')
+        destroyer.add_to_level(level=self,pos=(self.roi[1][0]-2,0))
+        self.staticItem.append(destroyer)
 
 
     def add_levels_render_items(self, gr):
@@ -98,24 +100,13 @@ class SimpleLevel1(BaseLevel):
             Rectangle(size=(w,h),
                       pos=(0.0,0.0),texture=self.texture,
                       color=Color(1,1,1,1))
-            
-
-        def renderPhysics():
-            canvasDraw =CanvasDraw( )
-            #canvasDraw.drawSegment((0,0),(0,self.s),(1,1,1))
-            #canvasDraw.drawSegment((0,self.s),(self.s,self.s),(1,1,1))
-            #canvasDraw.drawSegment((self.s,self.s),(self.s,0),(1,1,1))
-            #canvasDraw.drawSegment((self.s,0),(0,0),(1,1,1))
-
-            
-            Rectangle(pos=(0,0), size=(self.platW,self.platH),color=Color(1,1,1,1.0),
-              texture=self.blockTexture)
-            Rectangle(pos=(self.platW+self.gap,0), size=(self.platW,self.platH),color=Color(1,1,1,1.0),
-              texture=self.blockTexture)
+    
+        for item in self.staticItem:
+            item.add_to_render_queue(gr)
 
 
         gr.add_render_item(renderBg, z=0)
-        gr.add_render_item(renderPhysics, z=1)
+
 
 
 class SimpleLevel2(BaseLevel):

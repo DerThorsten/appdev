@@ -2,13 +2,17 @@ from kivy.logger import Logger
 from kivy.uix.boxlayout import BoxLayout
 from kivy.lang import Builder
 from kivy.uix.widget import Widget
+from kivy.uix.image import Image as UixImage
+from kivy.uix.label import Label
+from kivy.uix.spinner import Spinner
+from kivy.uix.button import Button
 from kivy.graphics import *
 from kivy.core.image import Image as CoreImage
-
+from kivy.uix.dropdown import DropDown
 from kivy.properties import NumericProperty, ReferenceListProperty,\
     ObjectProperty
-
-    
+from kivy.event import EventDispatcher
+from functools import partial
 import numpy
 from Box2D import *
 from math import cos,sin,degrees
@@ -170,65 +174,79 @@ class WorldManipulatorManager(object):
         return self.wm.render()
 
 
+Builder.load_string("""
+<ImageButton>:
+    image: image
+    id: blackGooButton
+    text: "BG"
+    background_color: 0,0,0,0.0
+
+    Image:
+        id: image
+        size: (self.parent.size[0], self.parent.size[1])
+        y: self.parent.y
+        x: self.parent.x
+        source: 'res/black_goo_128.png'
+""")
+class ImageButton(Button):
+    #image =  ObjectProperty(None)
+    pass
+
+
+Builder.load_string("""
+<GooDropDown>:
+""")
+
+class GooDropDown(BoxLayout):
+    dropdown  = ObjectProperty(None)
+    def __init__(self,*args,**kwargs):
+        super(GooDropDown, self).__init__(*args,**kwargs)
+        self.register_event_type('on_select_goo')
+
+        
+        self.dropdown = DropDown(spacing=5)
+        dropdown = self.dropdown
+
+
+        self.goos = dict(
+            blackGoo='res/black_goo_128.png', 
+            greenGoo='res/green_goo_128.png', 
+            anchorGoo='res/amboss_goo_128.png',
+            balloonGoo='res/pink_goo_128.png',  
+        )
+
+        def onRel(button,gooName):
+            self.mainbutton.image.source = self.goos[gooName]
+            self.dropdown.select(gooName)
+            self.dispatch('on_select_goo',gooName)
+
+        for gooName in self.goos.keys():
+            imgButton = ImageButton(size_hint=(None,None),height=44)
+            imgButton.bind(on_release=partial(onRel,gooName=gooName))
+            imgButton.image.source = self.goos[gooName]
+            dropdown.add_widget(imgButton)
+
+
+        # create a big main button
+        self.mainbutton = ImageButton()
+        self.mainbutton.bind(on_release=dropdown.open)
+
+        
+        #dropdown.bind(on_select=lambda instance, x: setattr(self.mainbutton, 'text', x))
+        self.add_widget(self.mainbutton)
+        #mainbutton.add_widget(dropdown)
+
+
+    def on_select_goo(self, gooName):
+        print "internal on select goo", gooName
 
 Builder.load_string("""
 <CreateAndSelectWidget>:
-    orientation: "vertical"
-    TabbedPanel:
-        tab_pos: "left_mid"
-        do_default_tab: False
-        TabbedPanelItem:
-            text: "select"
-            BoxLayout:
-                orientation: "vertical"
-                Button:
-                    id: selectObjectButton
-                    text: "->"
-                    on_release: root.on_release_selector_button("select")
-                Button:
-                    id: killObjectButton
-                    text: "kill"
-                    on_release: root.on_release_selector_button("kill")
-        TabbedPanelItem:
-            text: "goos"
-            default_tab:True
-            BoxLayout:
-                orientation: "vertical"
-                Button:
-                    id: blackGooButton
-                    text: "BG"
-                    on_release: root.on_release_creator_button("black-goo")
-                    Image:
-                        size: (self.parent.size[0], self.parent.size[1])
-                        y: self.parent.y
-                        x: self.parent.x
-                        source: 'res/black_goo_128.png'
-                Button:
-                    id: greenGooButton
-                    text: "GB"
-                    on_release: root.on_release_creator_button("green-goo")
-                    Image:
-                        size: (self.parent.size[0], self.parent.size[1])
-                        y: self.parent.y #+ self.parent.height - 30
-                        x: self.parent.x
-                        source: 'res/green_goo_128.png'
-                Button:
-                    id: anchorGooButton
-                    on_release: root.on_release_creator_button("anchor-goo")
-                    Image:
-                        size: (self.parent.size[0], self.parent.size[1])
-                        y: self.parent.y #+ self.parent.height - 30
-                        x: self.parent.x
-                        source: 'res/amboss_goo_128.png'
-                Button:
-                    id: balloonGooButton
-                    text: "BG"
-                    on_release: root.on_release_creator_button("ballon-goo")
-                    Image:
-                        size: (self.parent.size[0], self.parent.size[1])
-                        y: self.parent.y
-                        x: self.parent.x
-                        source: 'res/pink_goo_128.png'
+    orientation: "horizontal"
+    GooDropDown:
+        size_hint_x: None
+        size_X: 40
+        on_select_goo: root.on_release_creator_button(args[1])
 """)
 class CreateAndSelectWidget(BoxLayout):
 
@@ -250,14 +268,15 @@ class CreateAndSelectWidget(BoxLayout):
             self.wmManager.wm = self.wmManager.killSelector
         self.wmManager.passLevelToCurrentWm()
     def on_release_creator_button(self , objectType):
+        print "i got aevent"
         self.wmManager.wm = self.wmManager.gooCreator
-        if objectType == "black-goo":
+        if objectType == "blackGoo":
             self.wmManager.wm.gooCls = BlackGoo
-        elif objectType == "green-goo":
+        elif objectType == "greenGoo":
            Logger.debug("green goo")
            self.wmManager.wm.gooCls = GreenGoo
-        elif objectType == "anchor-goo":
+        elif objectType == "anchorGoo":
             self.wmManager.wm.gooCls = AnchorGoo
-        elif objectType == "ballon-goo":
+        elif objectType == "balloonGoo":
             self.wmManager.wm.gooCls = BallonGoo
         self.wmManager.passLevelToCurrentWm()

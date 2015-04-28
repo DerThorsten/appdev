@@ -216,6 +216,8 @@ class Goo(GameItem):
     def __init__(self):
         super(Goo, self).__init__()
 
+        self.isKilled = False
+        self.sizeMult = 1.0
     #def renderJoint(self,gr, joint, otherGoo):
     #    renderDistanceJoint(joint, color=(1,1,1,1), width=0.3)
 
@@ -239,15 +241,20 @@ class RoundGoo(Goo):
 
 
     def render(self, level):
-        pos = numpy.array(self.body.position)
-        angle = degrees(self.body.angle)
+        if not self.isKilled:
+            pos = numpy.array(self.body.position)
+            angle = degrees(self.body.angle)
+            self.render_it(level, pos,angle)
+        else:
+            pos = self.pos
+            angle = self.angle
+            self.render_it(level, pos,angle)
+            self.sizeMult*=0.95
 
-        self.render_it(level, pos,angle)
-
-    def render_it(self, level,  pos, angle):
+    def render_it(self, level,  pos, angle, sizeMult=1.0):
         param = self.param()
-        gooSize = b2Vec2(param.gooSize)
-        renderRectangle(size=param.gooSize, pos=pos, 
+        gooSize = b2Vec2(param.gooSize)*self.sizeMult
+        renderRectangle(size=gooSize, pos=pos, 
                         angle=angle, texture=self.gooTexture(),
                         shiftHalfSize=True)
 
@@ -306,7 +313,7 @@ class GreenGoo(RoundGoo):
     print __file__
     _gooImg = CoreImage.load("res/green_goo_128.png")
     _gooTexture = _gooImg.texture
-    _gooParam = GooParam()
+    _gooParam = GooParam(autoExpanding=False)
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
     #def renderJoint(self,gr, joint, otherGoo):
     #    renderDistanceJoint(joint, color=(0.2,1,0.2,1), width=0.3)
@@ -327,10 +334,19 @@ class GreenGoo(RoundGoo):
 
 class AnchorGoo(Goo):
     
-    _gooParam = GooParam(minBuildEdges=1,gooSize=(3,3), density=1000,
-                         autoExpanding=False)
+    _gooParam = GooParam(minBuildEdges=1,gooSize=(3,3), density=20,
+                         autoExpanding=False,
+                         canBeAddedAsJoint=False)
     _gooImg = CoreImage.load("res/amboss_goo_128.png")
     _gooTexture = _gooImg.texture
+
+    _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
+    #def renderJoint(self,gr, joint, otherGoo):
+    #    renderDistanceJoint(joint, color=(0.2,1,0.2,1), width=0.3)
+
+    @classmethod
+    def playBuildSound(cls):
+       AnchorGoo._buildSound.play()
 
     def __init__(self):
         super(AnchorGoo, self).__init__()
@@ -350,10 +366,15 @@ class AnchorGoo(Goo):
     #    renderDistanceJoint(joint, color=(0.2,0.1,0.2,1), width=0.3)
 
     def render(self, level):
-        self.render_it(level, self.body.position, degrees(self.body.angle))
+        if not self.isKilled:
+            self.render_it(level, self.body.position, degrees(self.body.angle))
+        else:
+            self.render_it(level, self.pos, degrees(self.angle))
+            self.sizeMult*=0.95
 
     def render_it(self, level,  pos, angle):
-        renderRectangle(size=self.param().gooSize, pos=pos, 
+        size = b2Vec2(self.param().gooSize)*self.sizeMult
+        renderRectangle(size=size, pos=pos, 
                         angle=angle, texture=self.gooTexture())
 
     def render_tentative(self, level, pos, canBeAdded):
@@ -404,12 +425,19 @@ class BallonGoo(Goo):
     
     _gooParam = GooParam(minBuildEdges=1,
                          maxBuildEdges=1,
-                         gooSize=(3,3), density=1,
+                         gooSize=(3,3), density=2,
                          autoExpanding=False,
                          canBeAddedAsJoint=False,
                          maxEdges=1)
     _gooImg = CoreImage.load("res/pink_goo_128.png")
     _gooTexture = _gooImg.texture
+    _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
+    #def renderJoint(self,gr, joint, otherGoo):
+    #    renderDistanceJoint(joint, color=(0.2,1,0.2,1), width=0.3)
+
+    @classmethod
+    def playBuildSound(cls):
+       BallonGoo._buildSound.play()
 
     def __init__(self):
         super(BallonGoo, self).__init__()
@@ -429,21 +457,27 @@ class BallonGoo(Goo):
     #    renderDistanceJoint(joint, color=(0.2,0.1,0.2,1), width=0.3)
 
     def render(self, level):
-        self.render_it(level, self.body.position, degrees(self.body.angle))
+        if not self.isKilled:
+            self.render_it(level, self.body.position, degrees(self.body.angle))
+        else:
+            self.render_it(level, self.pos, self.angle)
+            self.sizeMult*=0.95
 
     def render_it(self, level,  pos, angle):
-        renderRectangle(size=self.param().gooSize, pos=pos, 
+        renderRectangle(size=b2Vec2(self.param().gooSize)*self.sizeMult, pos=pos, 
                         angle=angle, texture=self.gooTexture(),
                         shiftHalfSize=True)
 
     def render_tentative(self, level, pos, canBeAdded):
+        pos  =  b2Vec2(pos)
         param = self.param()
+        size = b2Vec2(param.gooSize)
         if canBeAdded:
-            e = Rectangle(pos=pos,size=param.gooSize,color=Color(0,1,0,0.3))
+            e = Rectangle(pos=pos-size/2,size=param.gooSize,color=Color(0,1,0,0.3))
             self.render_it(level, pos, 0.0)
         else :
             self.render_it(level, pos, 0.0)
-            e = Rectangle(pos=pos,size=param.gooSize,color=Color(1,0,0,0.3))
+            e = Rectangle(pos=pos-size/2,size=param.gooSize,color=Color(1,0,0,0.3))
             
 
     def add_to_level(self, world, pos, angle=0.0, scale=1.0):
@@ -461,10 +495,10 @@ class BallonGoo(Goo):
         self.body.gravityScale = -1.0
         self.body.userData = self
 
-    def localAnchor(self):
-        param = self.param()
-        sx,sy = param.gooSize
-        return (0.5*sx, (4.5/5.0)*sy)
+    #def localAnchor(self):
+    #    param = self.param()
+    #    sx,sy = param.gooSize
+    #    return ()
 
     def createJoint(self):
         return GooBalloonJoint()
