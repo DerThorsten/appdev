@@ -278,12 +278,12 @@ class LevelContactListener(b2ContactListener):
             elif isinstance(udB, GooDestroyerItem):
                 # destroy udA
                 self.level.toDeleteGoos.add(udA)
-            elif isinstance(udA, GoalItem):
-                print "goal item contact"
-                #udA.gooBeginsContact(udB)
-            elif isinstance(udB, GoalItem):
-                print "goal item contact"
-                #udN.gooBeginsContact(udA)
+            #elif isinstance(udA, GoalItem):
+            #    print "goal item contact"
+            #    #udA.gooBeginsContact(udB)
+            #elif isinstance(udB, GoalItem):
+            #    print "goal item contact"
+            #    #udN.gooBeginsContact(udA)
 
 
     def PostSolve(self, contact, impulse):
@@ -324,7 +324,7 @@ class BaseLevel(object):
 
     def removeGoo(self, goo):
 
-        print "remove gooo"
+        #print "remove gooo"
         for e in self.gooGraph.edges_iter(goo,data=True):
                 j = e[2]['joint']
                 self.world.DestroyJoint(j)
@@ -335,7 +335,7 @@ class BaseLevel(object):
         goo.angle = degrees(goo.body.angle)
         def removeFromGraph(dt):
             self.gooGraph.remove_node(goo)
-            print "gone"
+            #rint "gone"
         Clock.schedule_once(removeFromGraph,0.5)
         self.world.DestroyBody(goo.body)
         BaseLevel._killSound.play()

@@ -66,6 +66,10 @@ class SimpleLevel1(BaseLevel):
         self.staticItem.append(blockA)
         self.staticItem.append(blockB)
 
+        # add a single starting goo
+        blackGoo = BlackGoo()
+        self.addGoo(blackGoo, (platW/2.0, platH+2.0))
+
         ##### add goal
         goal = GoalItem()
         goal.add_to_level(self, pos=(platW*1.5+gap-2.5, platH+50))
