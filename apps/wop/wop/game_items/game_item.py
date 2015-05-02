@@ -63,6 +63,57 @@ class StaticBlock(GameItem):
         gr.add_render_item(render_it,1)
 
 
+class RotatingKiller(GooDestroyerItem):
+    blockImg = CoreImage.load("res/Brick_Block.png")
+    blockTexture = blockImg.texture
+
+    def __init__(self, size):
+        super(RotatingKiller, self).__init__()
+        self.body = None
+        self.size = b2Vec2(size)
+    def add_to_level(self,level, pos, angle=45.0):
+        world = level.world
+        # Create a dynamic body
+        size = self.size
+        self.pos = b2Vec2(pos)+size/2.0
+        self.body=world.CreateDynamicBody(
+                                          position=self.pos, 
+                                          fixtures=b2FixtureDef(
+                                          shape=b2PolygonShape(box=size/2.0),
+                                          density=0.1)
+        )
+        # And add a box fixture onto it (with a nonzero density, so it will move)
+        #self.body.CreatePolygonFixture(box=size/2.0,friction=0.3)
+        self.body.userData = self
+        self.renderPos = self.pos-self.size/2.0
+
+    
+
+        rjd=b2RevoluteJointDef(
+                bodyA=level.groundBody,
+                bodyB=self.body,
+                localAnchorA=self.body.position,
+                localAnchorB=(-0,0),
+                enableMotor=True,
+                #enableLimit=True,
+                maxMotorTorque=10000,
+                motorSpeed=0,
+                #lowerAngle=-30.0 * b2_pi / 180.0,
+                #upperAngle=5.0 * b2_pi / 180.0,
+        )
+            
+        j = world.CreateJoint(rjd)
+        j.motorSpeed = 2
+
+    def add_to_render_queue(self, gr):
+        def render_it():
+            pos = self.body.position#-self.size/2.0
+            renderRectangle(size=self.size,pos=pos,texture=RotatingKiller.blockTexture,
+                            angle = degrees(self.body.angle),
+                            shiftHalfSize=True)
+
+        gr.add_render_item(render_it,1)
+
 class ZigZackDestroyer(GooDestroyerItem):
     def __init__(self, size, orientation='horizontal',ticks=None):
         super(ZigZackDestroyer, self).__init__()

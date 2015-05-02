@@ -7,14 +7,27 @@ import wop.level
 
 Builder.load_string("""
 <LevelSelectorWidget>:
+    orientation: 'vertical'
     Button:
         text: "level 1"
+        background_color: (0,0,0,0)
+        color: (0.3,1,0.3,1)
+        font_size: 80
+        font_name: "CBlocks"
         on_press: root.on_select_level("level-1")
     Button:
         text: "level 2"
+        background_color: (0,0,0,0)
+        color: (0.3,1,0.3,1)
+        font_size: 80
+        font_name: "CBlocks"
         on_press: root.on_select_level("level-2")
     Button:
         text: "back"
+        background_color: (0,0,0,0)
+        color: (1,0.3,0.3,1)
+        font_size: 80
+        font_name: "CBlocks"
         on_press: root.screen_manager.current = 'main_menu_screen'
 """)
 class LevelSelectorWidget(BoxLayout):

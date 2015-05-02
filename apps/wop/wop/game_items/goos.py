@@ -10,9 +10,27 @@ from game_item import GameItem
 from kivy.logger import Logger
 from kivy.graphics import *
 from kivy.core.audio import SoundLoader
-
+from wop import Singleton
 from wop import CanvasDraw, DebugDraw
 from wop import renderDistanceJoint,renderRectangle,renderDistanceJointTentative
+
+
+from collections import OrderedDict
+
+@Singleton
+class RegisteredGoos(object):
+    def __init__(self):
+        self.gooClsDict = OrderedDict()
+
+    def register(self, gooCls, gooName):
+        assert gooName not in self.gooClsDict
+        self.gooClsDict[gooName] = gooCls
+
+@Singleton
+class GameResources(object):
+    def __init__(self):
+        self.resources = dict()
+
 
 class GooParam(object):
     def __init__(self,
@@ -21,7 +39,7 @@ class GooParam(object):
         allowsRotation = True,
         friction = 10.0,
         density = 1.0,
-        linearDamping = 0.1,
+        linearDamping = 0.5,
         angularDamping = 0.2,
         gravityMultiplier = 1.0,
         minGooDist = 4.0,
@@ -30,7 +48,7 @@ class GooParam(object):
         autoExpanding = True,
         expandingDist = None,
         frequencyHz = 4.0,
-        dampingRatio = 0.2,
+        dampingRatio = 0.8,
         maxEdges = 10,
         minBuildEdges = 2,
         maxBuildEdges = 5,
@@ -141,14 +159,14 @@ class GooBalloonJoint(Joint):
         gB = gameItemB
         world = level.world
         gooGraph = level.gooGraph
-        assert isinstance(gA,BallonGoo)
+        assert isinstance(gA,BalloonGoo)
         assert isinstance(gB,Goo)
-        assert not isinstance(gB,BallonGoo)
+        assert not isinstance(gB,BalloonGoo)
 
         ballonGoo = gameItemA
-        nonBallonGoo = gameItemB
+        nonBalloonGoo = gameItemB
         balloonBody = ballonGoo.body
-        nonBalloonBody = nonBallonGoo.body
+        nonBalloonBody = nonBalloonGoo.body
 
         shape=b2PolygonShape(box=(0.1,0.1))
         fd=b2FixtureDef(
@@ -287,7 +305,8 @@ class RoundGoo(Goo):
 class BlackGoo(RoundGoo):
     print __file__
     _gooParam = GooParam()
-    _gooImg = CoreImage.load("res/black_goo_128.png")
+    texturePath = "res/black_goo_128.png"
+    _gooImg = CoreImage.load(texturePath)
     _gooTexture = _gooImg.texture
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
 
@@ -311,7 +330,8 @@ class BlackGoo(RoundGoo):
 
 class GreenGoo(RoundGoo):
     print __file__
-    _gooImg = CoreImage.load("res/green_goo_128.png")
+    texturePath = "res/green_goo_128.png"
+    _gooImg = CoreImage.load(texturePath)
     _gooTexture = _gooImg.texture
     _gooParam = GooParam(autoExpanding=False)
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
@@ -331,15 +351,14 @@ class GreenGoo(RoundGoo):
     def __init__(self):
         super(GreenGoo, self).__init__()
 
-
 class AnchorGoo(Goo):
     
-    _gooParam = GooParam(minBuildEdges=1,gooSize=(3,3), density=20,
+    _gooParam = GooParam(minBuildEdges=1,gooSize=(3,3), density=10,
                          autoExpanding=False,
                          canBeAddedAsJoint=False)
-    _gooImg = CoreImage.load("res/amboss_goo_128.png")
+    texturePath = "res/amboss_goo_128.png"
+    _gooImg = CoreImage.load(texturePath)
     _gooTexture = _gooImg.texture
-
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
     #def renderJoint(self,gr, joint, otherGoo):
     #    renderDistanceJoint(joint, color=(0.2,1,0.2,1), width=0.3)
@@ -419,9 +438,7 @@ class AnchorGoo(Goo):
         sx,sy = param.gooSize
         return (0.5*sx, (4.5/5.0)*sy)
 
-
-
-class BallonGoo(Goo):
+class BalloonGoo(Goo):
     
     _gooParam = GooParam(minBuildEdges=1,
                          maxBuildEdges=1,
@@ -429,7 +446,9 @@ class BallonGoo(Goo):
                          autoExpanding=False,
                          canBeAddedAsJoint=False,
                          maxEdges=1)
-    _gooImg = CoreImage.load("res/pink_goo_128.png")
+    
+    texturePath = "res/pink_goo_128.png"
+    _gooImg = CoreImage.load(texturePath)
     _gooTexture = _gooImg.texture
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
     #def renderJoint(self,gr, joint, otherGoo):
@@ -437,21 +456,21 @@ class BallonGoo(Goo):
 
     @classmethod
     def playBuildSound(cls):
-       BallonGoo._buildSound.play()
+       BalloonGoo._buildSound.play()
 
     def __init__(self):
-        super(BallonGoo, self).__init__()
+        super(BalloonGoo, self).__init__()
         self.body = None
     @classmethod
     def playBuildSound(cls):
         pass
     @classmethod
     def param(cls):
-       return BallonGoo._gooParam
+       return BalloonGoo._gooParam
 
     @classmethod
     def gooTexture(cls):
-        return BallonGoo._gooTexture
+        return BalloonGoo._gooTexture
 
     #def renderJoint(self,gr, joint, otherGoo):
     #    renderDistanceJoint(joint, color=(0.2,0.1,0.2,1), width=0.3)
@@ -502,3 +521,10 @@ class BallonGoo(Goo):
 
     def createJoint(self):
         return GooBalloonJoint()
+
+
+
+RegisteredGoos.Instance().register(BlackGoo,    'blackGoo')
+RegisteredGoos.Instance().register(GreenGoo,    'greenGoo')
+RegisteredGoos.Instance().register(AnchorGoo,   'anchroGoo')
+RegisteredGoos.Instance().register(BalloonGoo,  'balloonGoo')

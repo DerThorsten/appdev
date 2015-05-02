@@ -5,7 +5,7 @@ WorldOfPhysics
 A simple world-of-goo clone
 '''
 
-__version__ = "0.7"
+__version__ = "0.8"
 from wop.app import WorldOfPhysicsBaseApp
 from kivy.app import App
 

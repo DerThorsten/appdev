@@ -9,7 +9,7 @@ from kivy.uix.button import Button
 from kivy.graphics import *
 from kivy.core.image import Image as CoreImage
 from kivy.uix.dropdown import DropDown
-from kivy.properties import NumericProperty, ReferenceListProperty,\
+from kivy.properties import NumericProperty,StringProperty, ReferenceListProperty,\
     ObjectProperty
 from kivy.event import EventDispatcher
 from functools import partial
@@ -72,7 +72,8 @@ class GooCreator(WorldManipulator):
         self.wpos = None
 
     def _canBeAdded(self):
-        if self.tentativeGoo is None:
+        goosLeft = self.level.gooRes[self.gooCls]
+        if goosLeft <= 0 or self.tentativeGoo is None:
             return (0,None)
         self.tentativeGoo.pos = self.wpos
         r = self.level.gooGraph.canGooBeAdded(self.tentativeGoo, self.wpos)
@@ -101,34 +102,48 @@ class GooCreator(WorldManipulator):
             jointGameItem = self.tentativeGoo.createJoint()
             jointGameItem.add_to_level(self.level, b0.userData, b1.userData)
 
+        # decrement number of goos and update gui
+        if addAs == 1 or addAs == 2: 
+            goosLeft = self.level.gooRes[self.gooCls]
+            assert goosLeft >= 1
+            goosLeft -= 1
+            self.level.gooRes[self.gooCls] = goosLeft
+            self.gooButtonWidgets[self.gooCls].goosLeft = str(goosLeft)
+            self.selectedGooButtonWidget.goosLeft = str(goosLeft)
+
+            if goosLeft == 0 :
+                self.gooButtonWidgets[self.gooCls].disabled = True
+                #self.selectedGooButtonWidget.disabled = True
         self.wpos = None
         self.tentativeGoo  = None
 
     def render(self):
-        if self.wpos is not None and self.tentativeGoo is not None:
-            gr = self.level.gameRender
-            addAs,otherGoosBodies = self._canBeAdded()
-            if addAs <= 1:
-                #render connections/joints
-                if otherGoosBodies is not None:
-                    for ogb in otherGoosBodies:
-                        jointGameItem = self.tentativeGoo.createJoint()
-                        otherGoo = ogb.userData
-                        posB  = ogb.GetWorldPoint(b2Vec2(*otherGoo.localAnchor()))
-                        posA  = b2Vec2(self.wpos) + self.tentativeGoo.localAnchor()
-                        jointGameItem.render_tentative(gr, posA, posB)
-                # render the goo
-                self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
-            else:
-                ogbA = otherGoosBodies[0]                    
-                ogbB = otherGoosBodies[1]     
-                ogA = ogbA.userData             
-                ogB = ogbB.userData
+        goosLeft = self.level.gooRes[self.gooCls]
+        if goosLeft > 0:
+            if self.wpos is not None and self.tentativeGoo is not None:
+                gr = self.level.gameRender
+                addAs,otherGoosBodies = self._canBeAdded()
+                if addAs <= 1:
+                    #render connections/joints
+                    if otherGoosBodies is not None:
+                        for ogb in otherGoosBodies:
+                            jointGameItem = self.tentativeGoo.createJoint()
+                            otherGoo = ogb.userData
+                            posB  = ogb.GetWorldPoint(b2Vec2(*otherGoo.localAnchor()))
+                            posA  = b2Vec2(self.wpos) + self.tentativeGoo.localAnchor()
+                            jointGameItem.render_tentative(gr, posA, posB)
+                    # render the goo
+                    self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
+                else:
+                    ogbA = otherGoosBodies[0]                    
+                    ogbB = otherGoosBodies[1]     
+                    ogA = ogbA.userData             
+                    ogB = ogbB.userData
 
-                posA  = ogbA.GetWorldPoint(b2Vec2(*ogA.localAnchor()))
-                posB  = ogbB.GetWorldPoint(b2Vec2(*ogB.localAnchor()))
-                jointGameItem = self.tentativeGoo.createJoint()
-                jointGameItem.render_tentative(gr, posA, posB)
+                    posA  = ogbA.GetWorldPoint(b2Vec2(*ogA.localAnchor()))
+                    posB  = ogbB.GetWorldPoint(b2Vec2(*ogB.localAnchor()))
+                    jointGameItem = self.tentativeGoo.createJoint()
+                    jointGameItem.render_tentative(gr, posA, posB)
 
 class KillSelector(WorldManipulator):
     def __init__(self):
@@ -160,6 +175,16 @@ class WorldManipulatorManager(object):
     def passLevelToCurrentWm(self):
         self.wm.level = self.level
 
+        # here we initialize the resources
+
+        for gooCls in self.gooButtonWidgets.keys():
+            goosLeft = self.level.gooRes[gooCls]
+            gooButtonWidget =  self.gooButtonWidgets[gooCls]
+            gooButtonWidget.disabled = goosLeft == 0
+            gooButtonWidget.goosLeft = str(self.level.gooRes[gooCls])
+
+
+
     def world_on_touch_down(self, wpos, touch):
         #Logger.debug("WorldManipulatorManager: touch  up %.1f %.1f"%wpos ) 
         self.wm.world_on_touch_down(wpos, touch)
@@ -180,7 +205,6 @@ Builder.load_string("""
     id: blackGooButton
     text: "BG"
     background_color: 0,0,0,0.0
-
     Image:
         id: image
         size: (self.parent.size[0], self.parent.size[1])
@@ -194,72 +218,103 @@ class ImageButton(Button):
 
 
 Builder.load_string("""
+<GooButtonWidget>:
+    imageButton: imageButton
+    image: imageButton.image
+    size_hint_x: 1
+    size_hint_y: None
+    height: 45
+    width: 200
+    BoxLayout:
+        orientation: 'horizontal'
+        ImageButton:
+            id: imageButton
+            size_hint_x: 1
+        Label:
+            size_hint_x: 1
+            text: root.goosLeft
+""")
+class GooButtonWidget(BoxLayout):
+    goosLeft  = StringProperty('0')
+
+
+
+Builder.load_string("""
 <GooDropDown>:
 """)
 
 class GooDropDown(BoxLayout):
     dropdown  = ObjectProperty(None)
+    gooButtonWidgets = ObjectProperty(dict())
+    selectedGooButtonWidget = ObjectProperty(None)
     def __init__(self,*args,**kwargs):
         super(GooDropDown, self).__init__(*args,**kwargs)
         self.register_event_type('on_select_goo')
 
+        gooClsDict = RegisteredGoos.Instance().gooClsDict
         
         self.dropdown = DropDown(spacing=5)
         dropdown = self.dropdown
 
 
-        self.goos = dict(
-            blackGoo='res/black_goo_128.png', 
-            greenGoo='res/green_goo_128.png', 
-            anchorGoo='res/amboss_goo_128.png',
-            balloonGoo='res/pink_goo_128.png',  
-        )
+        def onRel(button,gooCls):
+            self.selectedGooButtonWidget.image.source = gooCls.texturePath
+            goosLeft = self.gooButtonWidgets[gooCls].goosLeft
+            self.selectedGooButtonWidget.goosLeft = goosLeft
+            #self.selectedGooButtonWidget.disabled = goosLeft == 0
+            self.dropdown.select(gooCls)
+            self.dispatch('on_select_goo',gooCls)
 
-        def onRel(button,gooName):
-            self.mainbutton.image.source = self.goos[gooName]
-            self.dropdown.select(gooName)
-            self.dispatch('on_select_goo',gooName)
+        for gooName in gooClsDict.keys():
 
-        for gooName in self.goos.keys():
-            imgButton = ImageButton(size_hint=(None,None),height=44)
-            imgButton.bind(on_release=partial(onRel,gooName=gooName))
-            imgButton.image.source = self.goos[gooName]
-            dropdown.add_widget(imgButton)
+            gooCls = gooClsDict[gooName] 
+
+            gooButtonWidget = GooButtonWidget()
+            imageButton = gooButtonWidget.imageButton
+            imageButton.bind(on_release=partial(onRel,gooCls=gooCls))
+            imageButton.image.source = gooCls.texturePath
+            dropdown.add_widget(gooButtonWidget)
+
+            self.gooButtonWidgets[gooCls] = gooButtonWidget
 
 
         # create a big main button
-        self.mainbutton = ImageButton()
-        self.mainbutton.bind(on_release=dropdown.open)
+        self.selectedGooButtonWidget = GooButtonWidget()
+        self.selectedGooButtonWidget.imageButton.bind(on_release=dropdown.open)
 
         
         #dropdown.bind(on_select=lambda instance, x: setattr(self.mainbutton, 'text', x))
-        self.add_widget(self.mainbutton)
+        self.add_widget(self.selectedGooButtonWidget)
         #mainbutton.add_widget(dropdown)
 
 
-    def on_select_goo(self, gooName):
-        print "internal on select goo", gooName
+    def on_select_goo(self, gooCls):
+        print "internal on select goo", gooCls
 
 Builder.load_string("""
 <CreateAndSelectWidget>:
     orientation: "horizontal"
+    gooDropDown: gooDropDown
+    gooButtonWidgets: gooDropDown.gooButtonWidgets
+    selectedGooButtonWidget: gooDropDown.selectedGooButtonWidget
     GooDropDown:
+        id: gooDropDown
         size_hint_x: None
         size_X: 40
         on_select_goo: root.on_release_creator_button(args[1])
 """)
 class CreateAndSelectWidget(BoxLayout):
-
-    selectObjectButton = ObjectProperty(None)
-    killObjectButton = ObjectProperty(None)
-    blackGooButton = ObjectProperty(None)
-    greenGooButton = ObjectProperty(None)
-    redGooButton = ObjectProperty(None)
-    pinkGooButton = ObjectProperty(None)
-
+    #gooDropDown = ObjectProperty(None)
     def __init__(self,*arg,**kwarg):
         super(CreateAndSelectWidget,self).__init__(*arg, **kwarg)
         self.wmManager = WorldManipulatorManager()
+        Clock.schedule_once(self.post_init, 0)
+    def post_init(self,*args):
+        self.wmManager.gooButtonWidgets = self.gooDropDown.gooButtonWidgets
+        self.wmManager.gooCreator.gooButtonWidgets = self.gooDropDown.gooButtonWidgets
+
+        self.wmManager.selectedGooButtonWidget = self.gooDropDown.selectedGooButtonWidget
+        self.wmManager.gooCreator.selectedGooButtonWidget = self.gooDropDown.selectedGooButtonWidget
 
     def on_release_selector_button(self, selectorType):
         if selectorType == "select":
@@ -267,16 +322,8 @@ class CreateAndSelectWidget(BoxLayout):
         elif selectorType == "kill":
             self.wmManager.wm = self.wmManager.killSelector
         self.wmManager.passLevelToCurrentWm()
-    def on_release_creator_button(self , objectType):
-        print "i got aevent"
+    def on_release_creator_button(self , gooCls):
+
         self.wmManager.wm = self.wmManager.gooCreator
-        if objectType == "blackGoo":
-            self.wmManager.wm.gooCls = BlackGoo
-        elif objectType == "greenGoo":
-           Logger.debug("green goo")
-           self.wmManager.wm.gooCls = GreenGoo
-        elif objectType == "anchorGoo":
-            self.wmManager.wm.gooCls = AnchorGoo
-        elif objectType == "balloonGoo":
-            self.wmManager.wm.gooCls = BallonGoo
+        self.wmManager.wm.gooCls = gooCls
         self.wmManager.passLevelToCurrentWm()

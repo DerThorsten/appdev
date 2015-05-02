@@ -33,6 +33,12 @@ class SimpleLevel1(BaseLevel):
         self.staticItem = []
 
 
+        self.gooRes[BlackGoo] = 50
+        self.gooRes[GreenGoo] = 0
+        self.gooRes[AnchorGoo] = 2
+        self.gooRes[BalloonGoo] = 2
+
+
     def initPhysics(self):  
         super(SimpleLevel1, self).initPhysics()
 
@@ -113,39 +119,39 @@ class SimpleLevel1(BaseLevel):
 
 
 
-class SimpleLevel2(BaseLevel):
+class SimpleLevel2(SimpleLevel1):
     def __init__(self, gameRender):
-        super(SimpleLevel2, self).__init__(world= b2World((0.0,-10.0)),gameRender=gameRender)
+        super(SimpleLevel2, self).__init__(gameRender=gameRender)
 
 
-        self.roi = (0,0), (20, 20)
-        self.s = 10
-        self.groundBody = None
 
-        self.image   = CoreImage.load("res/bg.jpg")
-        self.texture = self.image.texture
 
     def initPhysics(self):  
         super(SimpleLevel2, self).initPhysics()
-        s = self.s
-        self.groundBody = self.world.CreateBody(position=(0, 0))
-        self.groundBody.CreateEdgeChain([(0,0),(0,s),(s,s),(s,0), (0,0) ])
 
+
+
+
+        #### add a few blocks
+        rotKiller = RotatingKiller(size=(15, 2))
+        rotKiller.add_to_level(level=self, pos=(75, 40))
+        self.staticItem.append(rotKiller)
 
 
     def add_levels_render_items(self, gr):
+        super(SimpleLevel2, self).add_levels_render_items(gr)
+        pass
+        #def renderBg():
+        #    canvasDraw =CanvasDraw( )
+        #    Rectangle(texture=self.texture,size=(self.s,self.s),
+        #              pos=(0,0),image="res/bg.jpg",
+        #              color=Color(1,1,1,1.0))
+        #def renderPhysics():
+        #    canvasDraw =CanvasDraw( )
+        #    canvasDraw.drawSegment((0,0),(0,self.s),(1,1,1))
+        #    canvasDraw.drawSegment((0,self.s),(self.s,self.s),(1,1,1))
+        #    canvasDraw.drawSegment((self.s,self.s),(self.s,0),(1,1,1))
+        #    canvasDraw.drawSegment((self.s,0),(0,0),(1,1,1))
 
-        def renderBg():
-            canvasDraw =CanvasDraw( )
-            Rectangle(texture=self.texture,size=(self.s,self.s),
-                      pos=(0,0),image="res/bg.jpg",
-                      color=Color(1,1,1,1.0))
-        def renderPhysics():
-            canvasDraw =CanvasDraw( )
-            canvasDraw.drawSegment((0,0),(0,self.s),(1,1,1))
-            canvasDraw.drawSegment((0,self.s),(self.s,self.s),(1,1,1))
-            canvasDraw.drawSegment((self.s,self.s),(self.s,0),(1,1,1))
-            canvasDraw.drawSegment((self.s,0),(0,0),(1,1,1))
-
-        gr.add_render_item(renderBg, z=0)
-        gr.add_render_item(renderPhysics, z=1)
+        #gr.add_render_item(renderBg, z=0)
+        #gr.add_render_item(renderPhysics, z=1)
