@@ -14,7 +14,7 @@ from kivy.properties import NumericProperty,StringProperty, ReferenceListPropert
 from kivy.event import EventDispatcher
 from functools import partial
 import numpy
-from Box2D import *
+from pybox2d import *
 from math import cos,sin,degrees
 import functools
 from wop.game_items import *
@@ -99,7 +99,7 @@ class GooCreator(WorldManipulator):
                     #self.level.connectGoos(goo, ogb.userData)
         elif addAs == 2:
             b0,b1 = otherGoosBodies
-            jointGameItem = self.tentativeGoo.createJoint()
+            jointGameItem = self.tentativeGoo.createJoint(goAddedAsJoint=True)
             jointGameItem.add_to_level(self.level, b0.userData, b1.userData)
 
         # decrement number of goos and update gui
@@ -114,6 +114,7 @@ class GooCreator(WorldManipulator):
             if goosLeft == 0 :
                 self.gooButtonWidgets[self.gooCls].disabled = True
                 #self.selectedGooButtonWidget.disabled = True
+            self.level.gooOrJointAdded()
         self.wpos = None
         self.tentativeGoo  = None
 
@@ -129,8 +130,8 @@ class GooCreator(WorldManipulator):
                         for ogb in otherGoosBodies:
                             jointGameItem = self.tentativeGoo.createJoint()
                             otherGoo = ogb.userData
-                            posB  = ogb.GetWorldPoint(b2Vec2(*otherGoo.localAnchor()))
-                            posA  = b2Vec2(self.wpos) + self.tentativeGoo.localAnchor()
+                            posB  = ogb.getWorldPoint(b2.vec2(*otherGoo.localAnchor()))
+                            posA  = b2.vec2(self.wpos) + b2.vec2(self.tentativeGoo.localAnchor())
                             jointGameItem.render_tentative(gr, posA, posB)
                     # render the goo
                     self.tentativeGoo.render_tentative(self.level, self.wpos, addAs==1)
@@ -140,8 +141,8 @@ class GooCreator(WorldManipulator):
                     ogA = ogbA.userData             
                     ogB = ogbB.userData
 
-                    posA  = ogbA.GetWorldPoint(b2Vec2(*ogA.localAnchor()))
-                    posB  = ogbB.GetWorldPoint(b2Vec2(*ogB.localAnchor()))
+                    posA  = ogbA.getWorldPoint(b2.vec2(*ogA.localAnchor()))
+                    posB  = ogbB.getWorldPoint(b2.vec2(*ogB.localAnchor()))
                     jointGameItem = self.tentativeGoo.createJoint()
                     jointGameItem.render_tentative(gr, posA, posB)
 
@@ -258,7 +259,7 @@ class GooDropDown(BoxLayout):
 
 
         def onRel(button,gooCls):
-            self.selectedGooButtonWidget.image.source = gooCls.texturePath
+            self.selectedGooButtonWidget.image.source = gooCls.gooImage().filename
             goosLeft = self.gooButtonWidgets[gooCls].goosLeft
             self.selectedGooButtonWidget.goosLeft = goosLeft
             #self.selectedGooButtonWidget.disabled = goosLeft == 0
@@ -272,7 +273,7 @@ class GooDropDown(BoxLayout):
             gooButtonWidget = GooButtonWidget()
             imageButton = gooButtonWidget.imageButton
             imageButton.bind(on_release=partial(onRel,gooCls=gooCls))
-            imageButton.image.source = gooCls.texturePath
+            imageButton.image.source = gooCls.gooImage().filename
             dropdown.add_widget(gooButtonWidget)
 
             self.gooButtonWidgets[gooCls] = gooButtonWidget

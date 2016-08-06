@@ -23,6 +23,13 @@ Builder.load_string("""
         font_name: "CBlocks"
         on_press: root.on_select_level("level-2")
     Button:
+        text: "SpaceLevel"
+        background_color: (0,0,0,0)
+        color: (0.3,1,0.3,1)
+        font_size: 80
+        font_name: "CBlocks"
+        on_press: root.on_select_level("SpaceLevel")
+    Button:
         text: "back"
         background_color: (0,0,0,0)
         color: (1,0.3,0.3,1)
@@ -46,6 +53,9 @@ class LevelSelectorWidget(BoxLayout):
             level = wop.level.SimpleLevel1(gameRender=gr)
         elif levelStr == "level-2":
             level = wop.level.SimpleLevel2(gameRender=gr)
+        elif levelStr == "SpaceLevel":
+            level = wop.level.SpaceLevel(gameRender=gr)
+
 
         Logger.debug("LevelSelectorWidget: pass level to level_widget")
         self.level_widget.set_level(level)

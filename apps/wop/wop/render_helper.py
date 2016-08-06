@@ -1,7 +1,6 @@
 import numpy
 # Box2D
-from Box2D import *
-# kivy
+import pybox2d as b2# kivy
 from kivy.core.image import Image as CoreImage
 from kivy.logger import Logger
 from kivy.graphics import *
@@ -58,7 +57,7 @@ def renderRectangle(size, pos, angle, texture, shiftHalfSize=False):
     rot.axis = (0,0,1)
     rot.origin = pos
     if shiftHalfSize :
-        rpos = b2Vec2(pos) -b2Vec2(size)/2
+        rpos = b2.vec2(pos) -b2.vec2(size)/2
     else:
         rpos = pos
     Rectangle(pos=rpos, size=size,color=Color(1,1,1,1.0),

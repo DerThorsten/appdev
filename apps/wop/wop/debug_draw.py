@@ -1,4 +1,4 @@
-from Box2D import *
+import pybox2d as b2
 import numpy
 from kivy.graphics import *
 
@@ -45,23 +45,23 @@ class DebugDraw(CanvasDraw):
 
     def debugDraw(self):
         if self.world is not None:
-            for body in self.world.bodies:
+            for body in self.world.bodyList:
                 fixtures = body.fixtures
                 btype = body.type
                 xf  =  body.transform
                 for f in fixtures:
                     if body.active==False :
                         self.drawShape(f, xf, (0.5, 0.5, 0.3, 0.7) )
-                    elif btype == b2_staticBody:
+                    elif btype == b2.BodyTypes.staticBody:
                         self.drawShape(f, xf, (0.5, 0.9, 0.5, 0.7) )
-                    elif btype == b2_kinematicBody:
+                    elif btype == b2.BodyTypes.kinematicBody:
                         self.drawShape(f, xf, (0.5, 0.5, 0.5, 0.7) )
                     elif body.awake==False:
                         self.drawShape(f, xf, (0.6, 0.6, 0.6, 0.7) )
                     else :
                         self.drawShape(f, xf, (0.9, 0.7, 0.7, 0.7) )
 
-            for joint in self.world.joints:
+            for joint in self.world.jointList:
                 self.drawJoint(joint)
 
         
@@ -69,39 +69,39 @@ class DebugDraw(CanvasDraw):
     def drawShape(self,f,t,color):
         
         ftype = f.type
-        shape = f.shape
+        shape = f.shape.asMostDerived()
 
-        if ftype == b2Shape.e_circle :
+        if ftype == b2.ShapeType.circle :
             #print "circle"
-            center = b2Mul(t, shape.pos)
+            center = b2.b2Mul(t, shape.pos)
             radius = shape.radius
-            axis = b2Mul(t.q,(1.0,0.0))
+            axis = b2.b2Mul(t.q,b2.vec2(1.0,0.0))
 
             self.drawSolidCiricle(center, radius, axis, color)
 
-        elif ftype == b2Shape.e_edge :
+        elif ftype == b2.ShapeType.edge :
             #print "edge"
-            v1 = b2Mul(t, shape.vertex1)
-            v2 = b2Mul(t, shape.vertex2)
+            v1 = b2.b2Mul(t, shape.vertex1)
+            v2 = b2.b2Mul(t, shape.vertex2)
             self.drawSegment(v1, v2, color)
 
-        elif ftype == b2Shape.e_chain :
+        elif ftype == b2.ShapeType.chain :
             #print "chain"
             c = shape.vertexCount
             vertices = shape.vertices
-            v1 = b2Mul(t, shape.vertices[0])
+            v1 = b2.b2Mul(t, shape.vertices[0])
             for i in range(c):
-                v2 = b2Mul(t, shape.vertices[i])
+                v2 = b2.b2Mul(t, shape.vertices[i])
                 self.drawSegment(v1, v2, color)
                 #=self.drawSolidCiricle(v1, 0.05,(1.0,0.0), color)
-        elif ftype == b2Shape.e_polygon :
+        elif ftype == b2.ShapeType.polygon :
             #print "polygon"
             c = shape.vertexCount
             vertices = shape.vertices
             assert len(vertices) == c
             verts = []
             for i in range(c):
-                r = b2Mul(t, vertices[i])
+                r = b2.b2Mul(t, vertices[i])
                 verts.append(r)
             self.drawSolidPolygon(verts,c,color)
 
@@ -120,19 +120,19 @@ class DebugDraw(CanvasDraw):
 
         color = (0.5, 0.8, 0.8)
 
-        if(isinstance(joint,b2RopeJoint)):
+        if(isinstance(joint,b2.b2RopeJoint)):
             pass
-        elif(isinstance(joint,b2DistanceJoint)):
+        elif(isinstance(joint,b2.b2DistanceJoint)):
             self.drawSegment(pa, pb, color)
-        elif(isinstance(joint,b2RopeJoint)):
+        elif(isinstance(joint,b2.b2RopeJoint)):
             self.drawSegment(pa, pb, color)
-        elif(isinstance(joint,b2PulleyJoint)):
+        elif(isinstance(joint,b2.b2PulleyJoint)):
             gA = joint.groundAnchorA
             gB = joint.groundAnchorA
             self.drawSegment(gA, pa, color)
             self.drawSegment(gB, pb, color)
             self.drawSegment(gA, gB, color)
-        elif(isinstance(joint,b2MouseJoint)):
+        elif(isinstance(joint,b2.b2MouseJoint)):
             pass
         else:
             self.drawSegment(xa, pa, color)

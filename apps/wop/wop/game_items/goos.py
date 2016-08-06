@@ -2,7 +2,7 @@ import numpy
 from math import degrees
 from abc import ABCMeta ,abstractmethod
 # Box2D
-from Box2D import *
+import pybox2d as b2
 
 # kivy
 from kivy.core.image import Image as CoreImage
@@ -13,7 +13,7 @@ from kivy.core.audio import SoundLoader
 from wop import Singleton
 from wop import CanvasDraw, DebugDraw
 from wop import renderDistanceJoint,renderRectangle,renderDistanceJointTentative
-
+from wop import FileTextures,getImage,registerImage
 
 from collections import OrderedDict
 
@@ -53,7 +53,7 @@ class GooParam(object):
         minBuildEdges = 2,
         maxBuildEdges = 5,
         canBeAddedAsJoint = True,
-        addAsJointRadius = 12.0,
+        addAsJointRadius = 6.0,
         addAsJointDist = None,
         removable = False,
         connectsNonGoos = False
@@ -89,25 +89,38 @@ class GooParam(object):
         self.removable = removable
         self.connectsNonGoos = connectsNonGoos
 
-
-
+import matplotlib
+from matplotlib import cm
 
 class Joint(GameItem):
     __metaclass__ = ABCMeta
     def __init__(self):
         super(Joint, self).__init__()
         self.joint = None
+        self.force = 0
+
+        self.cm  = matplotlib.cm.ScalarMappable(norm=matplotlib.colors.Normalize(0,1),
+                                                cmap='jet')
 
     @abstractmethod
     def add_to_level(self,level, gameItemA, gameItemB):
         pass
 
+    def jointStress():
+        return 0
 
     def render(self, gr):
-        renderDistanceJoint(self.joint)
+        f =  self.jointStress()
+        color = self.cm.to_rgba(f)
+
+        renderDistanceJoint(self.joint,color=color)
 
     def render_tentative(self, gr, pA, pB):
         renderDistanceJointTentative(pA,pB)
+
+
+    def breakJoint(self):
+        return False
 
 
 class GooJoint(Joint):
@@ -117,11 +130,17 @@ class GooJoint(Joint):
     def add_to_level(self,level, gameItemA, gameItemB):
         pass
 
+    def breakJoint(self):
+        return False
+
+
 class GooDistanceJoint(Joint):
-    def __init__(self):
+    def __init__(self,goAddedAsJoint=False):
         super(GooDistanceJoint, self).__init__()
         self.joint = None
-
+        self.goAddedAsJoint = goAddedAsJoint
+        self._jointStress = 0
+        self._d = 0
     def add_to_level(self,level, gameItemA, gameItemB):
         gA = gameItemA
         gB = gameItemB
@@ -132,21 +151,48 @@ class GooDistanceJoint(Joint):
 
         # take param from first goo (so far)
         gParam  = gA.param()
-        dfn=b2DistanceJointDef(
+        dfn=b2.distanceJointDef(
            frequencyHz=gParam.frequencyHz,
            dampingRatio=gParam.dampingRatio,
            bodyA=gA.body,bodyB=gB.body,
            localAnchorA=gA.localAnchor(),
            localAnchorB=gB.localAnchor()
         )
-        self.joint = world.CreateJoint(dfn)
+
+
+        self.joint = world.createJoint(dfn).asDistanceJoint()
         self.joint.userData = self
-        if gParam.autoExpanding:
+        if gParam.autoExpanding and self.goAddedAsJoint==False:
             self.joint.length = gParam.expandingDist
+        else:
+            pA  = gA.body.getWorldPoint(b2.vec2(gA.localAnchor()))
+            pB  = gB.body.getWorldPoint(b2.vec2(gB.localAnchor()))
+            d = (pA - pB).length
+            self.joint.length = d
         # add edge to gooGraph
         level.game_items.add(self.joint)
         gooGraph.add_edge(gA, gB, joint=self.joint)
-        
+    def jointStress(self):
+        return self._jointStress
+
+    def currentLength(self):
+        j = self.joint
+        return (j.anchorA -  j.anchorB).length
+
+    def breakJoint(self):
+        j = self.joint
+        l = j.length
+        al = self.currentLength()
+        d = al - l 
+        if(d<=0):
+            self._jointStress = 0
+        else:
+            self._jointStress = 1.0 - numpy.exp(-1.0*d)
+            self._d = 0.7*self._d + 0.3*d
+
+            if self._d/l >= 0.13:
+                return True
+        return False 
 
 
 class GooBalloonJoint(Joint):
@@ -159,7 +205,7 @@ class GooBalloonJoint(Joint):
         gB = gameItemB
         world = level.world
         gooGraph = level.gooGraph
-        assert isinstance(gA,BalloonGoo)
+        assert isinstance(gA,BalloonGoo) or isinstance(gA,BalloonGoo2) 
         assert isinstance(gB,Goo)
         assert not isinstance(gB,BalloonGoo)
 
@@ -168,13 +214,15 @@ class GooBalloonJoint(Joint):
         balloonBody = ballonGoo.body
         nonBalloonBody = nonBalloonGoo.body
 
-        shape=b2PolygonShape(box=(0.1,0.1))
-        fd=b2FixtureDef(
+        shape=b2.polygonShape(box=(0.1,0.1))
+        fd=b2.fixtureDef(
                     shape=shape,
                     friction=0.2,
                     density=20,
-                    categoryBits=0x0001,
-                    maskBits=(0xFFFF & ~0x0002),
+                    shapeFilter=b2.shapeFilter(
+                        categoryBits=0x0001,
+                        maskBits=(0xFFFF & ~0x0002)
+                    )
                     )
 
 
@@ -187,38 +235,15 @@ class GooBalloonJoint(Joint):
         ropeLength = (startPos - endPos).length
 
         prevBody=gameItemB.body
-        if False:
-            for i in range(N):
-                if i < N-1:
-                    body = world.CreateDynamicBody(
-                                position=(x+0.1+i, y), 
-                                fixtures=fd,
-                                angularDamping=1,
-                                )
-                else:
-                    #shape.box=(1.5, 1.5)
-                    #fd.density=100
-                    #fd.categoryBits=0x0002
-                    body = balloonBody
-
-                world.CreateRevoluteJoint(
-                    bodyA=prevBody,
-                    bodyB=body,
-                    anchor=(x+i, y),
-                    collideConnected=False, 
-                    )
-
-                prevBody = body
-
         extraLength=0.01
-        self.rd=rd=b2RopeJointDef(
+        self.rd=rd=b2.ropeJointDef(
                             bodyA=gameItemA.body, 
                             bodyB=gameItemB.body,
                             maxLength=ropeLength,
                             localAnchorA=(0,0), 
                             localAnchorB=(0,0),
                             )
-        self.joint=world.CreateJoint(rd)
+        self.joint=world.createJoint(rd)
         self.joint.userData=self
         level.game_items.add(self.joint)
         gooGraph.add_edge(gA, gB, joint=self.joint)
@@ -240,23 +265,16 @@ class Goo(GameItem):
     #    renderDistanceJoint(joint, color=(1,1,1,1), width=0.3)
 
     def localAnchor(self):
-        return b2Vec2(0,0)
+        return b2.vec2(0,0)
 
-    def createJoint(self):
-        return GooDistanceJoint()
+    def createJoint(self, goAddedAsJoint=False):
+        return GooDistanceJoint(goAddedAsJoint=goAddedAsJoint)
     
-
 class RoundGoo(Goo):
     #__metaclass__ = ABCMeta
     def __init__(self):
         super(RoundGoo, self).__init__()
         self.body = None
-
-    @classmethod
-    def gooTexture(cls):
-        raise RuntimeError("child class gooTexture should be called")
-
-
 
     def render(self, level):
         if not self.isKilled:
@@ -271,19 +289,20 @@ class RoundGoo(Goo):
 
     def render_it(self, level,  pos, angle, sizeMult=1.0):
         param = self.param()
-        gooSize = b2Vec2(param.gooSize)*self.sizeMult
+        gooSize = b2.vec2(param.gooSize)*self.sizeMult
         renderRectangle(size=gooSize, pos=pos, 
-                        angle=angle, texture=self.gooTexture(),
+                        angle=angle, texture=self.gooImage().texture,
                         shiftHalfSize=True)
 
 
 
     def render_tentative(self, level, pos, canBeAdded):
-        size = b2Vec2(self.param().gooSize)
+        size = b2.vec2(self.param().gooSize)
         color = (1,0,0,0.3)
-        if canBeAdded: color = (0,1,0,0.3)
+        if canBeAdded:
+            color = (0,1,0,0.3)
         self.render_it(level, pos, 0.0)
-        e = Ellipse(pos=b2Vec2(pos)-size/2,size=size,color=Color(*color))
+        e = Ellipse(pos=b2.vec2(pos)-size/2,size=size,color=Color(*color))
 
             
 
@@ -291,23 +310,25 @@ class RoundGoo(Goo):
         param = self.param()
         assert param.gooSize[0] == param.gooSize[1]
         radius = param.gooSize[0]/2.0
-        circle=b2FixtureDef(shape=b2CircleShape(radius=radius),
+        circle=b2.fixtureDef(shape=b2.circleShape(radius=radius),
                             density=param.density,
                             friction=param.friction)
-        self.body = world.CreateBody(type=b2_dynamicBody,
-                                        position=pos,
+        self.body = world.createBody(   b2.bodyDef(
+                                            btype=b2.BodyTypes.dynamicBody,
+                                            position=pos,
+                                            angularDamping=param.angularDamping,
+                                            linearDamping=param.linearDamping
+                                        ),
                                         fixtures=circle,
-                                        angularDamping=param.angularDamping,
-                                        linearDamping=param.linearDamping)
+                                        )
         self.body.userData = self
 
 
+
+
+registerImage("blackGoo","res/black_goo_128.png")
 class BlackGoo(RoundGoo):
-    print __file__
-    _gooParam = GooParam()
-    texturePath = "res/black_goo_128.png"
-    _gooImg = CoreImage.load(texturePath)
-    _gooTexture = _gooImg.texture
+    _gooParam = GooParam(removable=True)
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
 
     #def renderJoint(self,gr, joint, otherGoo):
@@ -322,17 +343,14 @@ class BlackGoo(RoundGoo):
        return BlackGoo._gooParam
 
     @classmethod
-    def gooTexture(cls):
-        return BlackGoo._gooTexture
+    def gooImage(cls):
+        return getImage('blackGoo')
 
     def __init__(self):
         super(BlackGoo, self).__init__()
 
+registerImage("greenGoo","res/green_goo_128.png")
 class GreenGoo(RoundGoo):
-    print __file__
-    texturePath = "res/green_goo_128.png"
-    _gooImg = CoreImage.load(texturePath)
-    _gooTexture = _gooImg.texture
     _gooParam = GooParam(autoExpanding=False)
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
     #def renderJoint(self,gr, joint, otherGoo):
@@ -345,20 +363,17 @@ class GreenGoo(RoundGoo):
     def param(cls):
        return GreenGoo._gooParam
     @classmethod
-    def gooTexture(cls):
-        return GreenGoo._gooTexture
-
+    def gooImage(cls):
+        return getImage('greenGoo')
     def __init__(self):
         super(GreenGoo, self).__init__()
 
+registerImage("anchorGoo","res/amboss_goo_128.png")
 class AnchorGoo(Goo):
     
     _gooParam = GooParam(minBuildEdges=1,gooSize=(3,3), density=10,
                          autoExpanding=False,
                          canBeAddedAsJoint=False)
-    texturePath = "res/amboss_goo_128.png"
-    _gooImg = CoreImage.load(texturePath)
-    _gooTexture = _gooImg.texture
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
     #def renderJoint(self,gr, joint, otherGoo):
     #    renderDistanceJoint(joint, color=(0.2,1,0.2,1), width=0.3)
@@ -378,8 +393,8 @@ class AnchorGoo(Goo):
        return AnchorGoo._gooParam
 
     @classmethod
-    def gooTexture(cls):
-        return AnchorGoo._gooTexture
+    def gooImage(cls):
+        return getImage('anchorGoo')
 
     #def renderJoint(self,gr, joint, otherGoo):
     #    renderDistanceJoint(joint, color=(0.2,0.1,0.2,1), width=0.3)
@@ -392,9 +407,9 @@ class AnchorGoo(Goo):
             self.sizeMult*=0.95
 
     def render_it(self, level,  pos, angle):
-        size = b2Vec2(self.param().gooSize)*self.sizeMult
+        size = b2.vec2(self.param().gooSize)*self.sizeMult
         renderRectangle(size=size, pos=pos, 
-                        angle=angle, texture=self.gooTexture())
+                        angle=angle, texture=self.gooImage().texture)
 
     def render_tentative(self, level, pos, canBeAdded):
         param = self.param()
@@ -419,18 +434,21 @@ class AnchorGoo(Goo):
         ]
         rad = (sx / 5.0)/2.0
         circlePos = (2.5/5.0)*sx , (4.5/5.0)*sy
-        poly   = b2PolygonShape(vertices=self.verts)
-        circle = b2CircleShape(radius=rad ,pos=circlePos)
+        poly   = b2.polygonShape(vertices=self.verts)
+        circle = b2.circleShape(radius=rad ,pos=circlePos)
 
-        fdef = b2FixtureDef(density=param.density,
+        fdef = b2.fixtureDef(density=param.density,
                             friction=param.friction)
 
-        self.body = world.CreateBody(type=b2_dynamicBody,
+        self.body = world.createBody(
+                                     b2.bodyDef(
+                                     btype=b2.BodyTypes.dynamicBody,
                                      position=pos,
-                                     shapes=[poly,circle],
-                                     shapeFixture=fdef,
                                      angularDamping=param.angularDamping,
-                                     linearDamping=param.linearDamping)
+                                     linearDamping=param.linearDamping
+                                     ),
+                                     shapes=[poly,circle],
+                                     shapeFixture=fdef)
         self.body.userData = self
 
     def localAnchor(self):
@@ -438,6 +456,7 @@ class AnchorGoo(Goo):
         sx,sy = param.gooSize
         return (0.5*sx, (4.5/5.0)*sy)
 
+registerImage("pinkGoo","res/pink_goo_128.png")
 class BalloonGoo(Goo):
     
     _gooParam = GooParam(minBuildEdges=1,
@@ -447,20 +466,18 @@ class BalloonGoo(Goo):
                          canBeAddedAsJoint=False,
                          maxEdges=1)
     
-    texturePath = "res/pink_goo_128.png"
-    _gooImg = CoreImage.load(texturePath)
-    _gooTexture = _gooImg.texture
     _buildSound = SoundLoader.load('res/sounds/discovery1.wav')
     #def renderJoint(self,gr, joint, otherGoo):
     #    renderDistanceJoint(joint, color=(0.2,1,0.2,1), width=0.3)
+    def __init__(self):
+        super(BalloonGoo, self).__init__()
+        self.body = None
 
     @classmethod
     def playBuildSound(cls):
        BalloonGoo._buildSound.play()
 
-    def __init__(self):
-        super(BalloonGoo, self).__init__()
-        self.body = None
+
     @classmethod
     def playBuildSound(cls):
         pass
@@ -469,8 +486,8 @@ class BalloonGoo(Goo):
        return BalloonGoo._gooParam
 
     @classmethod
-    def gooTexture(cls):
-        return BalloonGoo._gooTexture
+    def gooImage(cls):
+        return getImage('pinkGoo')
 
     #def renderJoint(self,gr, joint, otherGoo):
     #    renderDistanceJoint(joint, color=(0.2,0.1,0.2,1), width=0.3)
@@ -483,14 +500,14 @@ class BalloonGoo(Goo):
             self.sizeMult*=0.95
 
     def render_it(self, level,  pos, angle):
-        renderRectangle(size=b2Vec2(self.param().gooSize)*self.sizeMult, pos=pos, 
-                        angle=angle, texture=self.gooTexture(),
+        renderRectangle(size=b2.vec2(self.param().gooSize)*self.sizeMult, pos=pos, 
+                        angle=angle, texture=self.gooImage().texture,
                         shiftHalfSize=True)
 
     def render_tentative(self, level, pos, canBeAdded):
-        pos  =  b2Vec2(pos)
+        pos  =  b2.vec2(pos)
         param = self.param()
-        size = b2Vec2(param.gooSize)
+        size = b2.vec2(param.gooSize)
         if canBeAdded:
             e = Rectangle(pos=pos-size/2,size=param.gooSize,color=Color(0,1,0,0.3))
             self.render_it(level, pos, 0.0)
@@ -503,14 +520,18 @@ class BalloonGoo(Goo):
         param = self.param()
         assert param.gooSize[0] == param.gooSize[1]
         radius = param.gooSize[0]/2.0
-        circle=b2FixtureDef(shape=b2CircleShape(radius=radius),
+        circle=b2.fixtureDef(shape=b2.circleShape(radius=radius),
                             density=param.density,
                             friction=param.friction)
-        self.body = world.CreateBody(type=b2_dynamicBody,
+        self.body = world.createBody(   
+                                        b2.bodyDef(
+                                        btype=b2.BodyTypes.dynamicBody,
                                         position=pos,
-                                        fixtures=circle,
                                         angularDamping=param.angularDamping,
-                                        linearDamping=param.linearDamping)
+                                        linearDamping=param.linearDamping
+                                        ),
+                                        fixtures=circle,
+                                        )
         self.body.gravityScale = -1.0
         self.body.userData = self
 
@@ -524,7 +545,9 @@ class BalloonGoo(Goo):
 
 
 
+
 RegisteredGoos.Instance().register(BlackGoo,    'blackGoo')
 RegisteredGoos.Instance().register(GreenGoo,    'greenGoo')
 RegisteredGoos.Instance().register(AnchorGoo,   'anchroGoo')
 RegisteredGoos.Instance().register(BalloonGoo,  'balloonGoo')
+

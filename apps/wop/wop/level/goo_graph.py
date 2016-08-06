@@ -1,6 +1,6 @@
 import numpy
 import networkx as nx
-from Box2D import *
+import pybox2d as b2
 from kivy.clock import Clock
 from kivy.logger import Logger
 import operator
@@ -12,7 +12,7 @@ from kivy.app import App
 from wop.game_items import GameItem,GooDestroyerItem
 from wop.game_items import RegisteredGoos
 
-class FindAllGoos(Box2D.b2QueryCallback):
+class FindAllGoos(b2.QueryCallback):
     def __init__(self, pos, minDist, maxDist,gooGraph,verbose=False): 
         super(FindAllGoos, self).__init__()
         self.pos = pos
@@ -28,7 +28,8 @@ class FindAllGoos(Box2D.b2QueryCallback):
 
     def ReportFixture(self, fixture):
         body = fixture.body
-        if body.type == b2_dynamicBody:
+        print body,body.btype
+        if body.btype == b2.BodyTypes.dynamicBody:
             ud = body.userData 
             if self.verbose : print "found goo"
             if(isinstance(ud,Goo)):
@@ -36,8 +37,8 @@ class FindAllGoos(Box2D.b2QueryCallback):
                 if currentDegree+1 < ud.param().maxEdges :
                     if body not in self.dists:
                         #print "body pos",body.position, "local anchor ",ud.localAnchor()
-                        #print "wpos ",body.GetWorldPoint(b2Vec2(*ud.localAnchor())),"\n"
-                        d = self.pos - body.GetWorldPoint(b2Vec2(*ud.localAnchor())) #position
+                        #print "wpos ",body.getWorldPoint(b2.vec2(*ud.localAnchor())),"\n"
+                        d = self.pos - body.getWorldPoint(b2.vec2(*ud.localAnchor())) #position
                         d = d.length
                         if d>=self.minDist and d<=self.maxDist:
                             self.dists[body] = d
@@ -96,7 +97,7 @@ class GooGraph(nx.Graph):
         nGoos = self.number_of_nodes()
         
         if isinstance(pos,tuple):
-            pos = b2Vec2(*pos)
+            pos = b2.vec2(*pos)
         # try to add the goo as edge first
         if nGoos >= 2 :
             rad = gParam.addAsJointRadius
@@ -106,10 +107,10 @@ class GooGraph(nx.Graph):
                                 minDist=0,
                                 maxDist=rad,gooGraph=self,
                                 verbose=False)
-            lb = lowerBound=pos-(rad, rad)
-            ub = lowerBound=pos+(rad, rad)
-            aabb = b2AABB(lowerBound=lb, upperBound=ub)
-            self.world.QueryAABB(query, aabb)
+            lb = lowerBound=pos-b2.b2Vec2(rad, rad)
+            ub = lowerBound=pos+b2.b2Vec2(rad, rad)
+            aabb = b2.aabb(lowerBound=lb, upperBound=ub)
+            self.world.queryAABB(query, aabb)
             dists, sortedBodies = query.sortedBodies()
             nOther = len(dists)
             
@@ -135,8 +136,8 @@ class GooGraph(nx.Graph):
 
                         # only goos which are not yet connected can be connected
                         if not self.has_edge(goo0,goo1):
-                            p0 = b0.GetWorldPoint(b2Vec2(*goo0.localAnchor()))
-                            p1 = b1.GetWorldPoint(b2Vec2(*goo1.localAnchor()))
+                            p0 = b0.getWorldPoint(b2.vec2(*goo0.localAnchor()))
+                            p1 = b1.getWorldPoint(b2.vec2(*goo1.localAnchor()))
 
           
                             lineDist = distToLine((p0,p1), pos)
@@ -157,8 +158,8 @@ class GooGraph(nx.Graph):
             mxDst = gParam.maxGooDist
             query = FindAllGoos(pos, minDist=gParam.minGooDist,
                                 maxDist=gParam.maxGooDist,gooGraph=self)
-            aabb = b2AABB(lowerBound=pos-(mxDst, mxDst), upperBound=pos+(mxDst, mxDst))
-            self.world.QueryAABB(query, aabb)
+            aabb = b2.aabb(lowerBound=pos-b2.vec2(mxDst, mxDst), upperBound=pos+b2.vec2(mxDst, mxDst))
+            self.world.queryAABB(query, aabb)
 
             dists, sortedBodies = query.sortedBodies()
             nOther = len(dists)

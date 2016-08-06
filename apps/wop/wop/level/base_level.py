@@ -1,6 +1,6 @@
 import numpy
 import networkx as nx
-from Box2D import *
+import pybox2d as b2
 from kivy.clock import Clock
 from kivy.logger import Logger
 import operator
@@ -15,7 +15,7 @@ from goo_graph import GooGraph
 
 
 
-class LevelDestructionListener(b2DestructionListener):
+class LevelDestructionListener(b2.DestructionListener):
     """
     The destruction listener callback:
     "SayGoodbye" is called when a joint or shape is deleted.
@@ -23,25 +23,26 @@ class LevelDestructionListener(b2DestructionListener):
     def __init__(self,level, **kwargs):
         super(LevelDestructionListener, self).__init__(**kwargs)
         self.level = level
-    def SayGoodbye(self, pobject):
-        if isinstance(pobject, b2Joint):
-            if self.level.mouseJoint==pobject:
-                self.level.mouseJoint=None
-            else:
-                self.level.joint_destroyed(pobject)
-        elif isinstance(pobject, b2Fixture):
-            #self.level.FixtureDestroyed(pobject)
-            pass
 
-class LevelContactListener(b2ContactListener):
+    def sayGoodbyeJoint(self, joint):
+        if self.level.mouseJoint==joint:
+            self.level.mouseJoint=None
+        else:
+            self.level.joint_destroyed(joint)
+
+
+
+
+class LevelContactListener(b2.ContactListener):
     def __init__(self, level):
-        b2ContactListener.__init__(self)
+        super(LevelContactListener, self).__init__()
         self.level = level
-    def BeginContact(self, contact):
+    def beginContact(self, contact):
         """
         This is a critical function when there are many contacts in the world.
         It should be optimized as much as possible.
         """
+        #print "CONTACT",contact
         bodyA=contact.fixtureA.body
         bodyB=contact.fixtureB.body
         
@@ -58,14 +59,14 @@ class LevelContactListener(b2ContactListener):
             if( not isinstance(udA, Goo) and not isinstance(udB, Goo) ):
                 pass   
             elif isinstance(udA, GoalItem):
-                print "goal item begin contact"
+                #print "goal item begin contact"
                 udA.gooBeginsContact(udB)
             elif isinstance(udB, GoalItem):
-                print "goal item begin contact"
+                #print "goal item begin contact"
                 udN.gooBeginsContact(udA)
 
         
-    def EndContact(self, contact):
+    def endContact(self, contact):
 
         bodyA=contact.fixtureA.body
         bodyB=contact.fixtureB.body
@@ -83,14 +84,14 @@ class LevelContactListener(b2ContactListener):
             if( not isinstance(udA, Goo) and not isinstance(udB, Goo) ):
                 pass   
             elif isinstance(udA, GoalItem):
-                print "goal item end contact"
+                #print "goal item end contact"
                 udA.gooEndsContact(udB)
             elif isinstance(udB, GoalItem):
                 #print "goal item end contact"
                 udN.gooEndsContact(udA)
-    def PreSolve(self, contact, oldManifold):
+    def preSolve(self, contact, oldManifold):
         worldManifold=contact.worldManifold
-        state1, state2 = b2GetPointStates(oldManifold, contact.manifold)
+        #state1, state2 = b2GetPointStates(oldManifold, contact.manifold)
 
         bodyA=contact.fixtureA.body
         bodyB=contact.fixtureB.body
@@ -123,7 +124,7 @@ class LevelContactListener(b2ContactListener):
             #    #udN.gooBeginsContact(udA)
 
 
-    def PostSolve(self, contact, impulse):
+    def postSolve(self, contact, impulse):
         pass
 
 
@@ -139,8 +140,8 @@ class BaseLevel(object):
         self.destructionListener = LevelDestructionListener(level=self)
         self.contactListener = LevelContactListener(level=self)
 
-        self.world.destructionListener=self.destructionListener
-        self.world.contactListener= self.contactListener
+        self.world.setDestructionListener(self.destructionListener)
+        self.world.setContactListener(self.contactListener)
 
 
         self.gameRender = gameRender
@@ -166,13 +167,24 @@ class BaseLevel(object):
             gooCls = gooClsDict[gooName]
             self.gooRes[gooCls] = 0
 
+        self.justAddedGooOrJoint = False
+
+
+    def gooOrJointAdded(self):
+        #print "jay"
+        self.justAddedGooOrJoin = True
+
+        def cb(dt):
+            self.justAddedGooOrJoin = False
+        Clock.schedule_once(cb, 0.25)
+
 
     def removeGoo(self, goo):
 
         #print "remove gooo"
         for e in self.gooGraph.edges_iter(goo,data=True):
                 j = e[2]['joint']
-                self.world.DestroyJoint(j)
+                self.world.destroyJoint(j)
                 self.gooGraph.remove_edge(e[0],e[1])
         
         goo.isKilled = True
@@ -182,7 +194,7 @@ class BaseLevel(object):
             self.gooGraph.remove_node(goo)
             #rint "gone"
         Clock.schedule_once(removeFromGraph,0.5)
-        self.world.DestroyBody(goo.body)
+        self.world.destroyBody(goo.body)
         BaseLevel._killSound.play()
 
     ###############################
@@ -226,7 +238,7 @@ class BaseLevel(object):
                 self.currentGameItem = gameItem
                 gameItem.world_on_touch_down(wpos, touch)
 
-            self.mouseJoint = self.world.CreateMouseJoint(
+            self.mouseJoint = self.world.createMouseJoint(
                 bodyA=self.groundBody,
                 bodyB=body,
                 target=wpos,
@@ -265,8 +277,8 @@ class BaseLevel(object):
 
     def initPhysics(self):
         self.killBoxVerts = boxVertices(*self.roi)
-        self.killBoundingBoxBody = self.world.CreateBody(position=self.roi[0])
-        self.killBoundingBoxBody.CreateEdgeChain(self.killBoxVerts)
+        self.killBoundingBoxBody = self.world.createBody(position=self.roi[0])
+        self.killBoundingBoxBody.createEdgeChainFixture(self.killBoxVerts)
 
     def start_level(self):
         Clock.schedule_interval(self.updateCaller,1.0/50)
@@ -285,24 +297,45 @@ class BaseLevel(object):
 
     def preUpdate(self, dt):
         md = 0
+
         for i,e in enumerate(self.gooGraph.edges(data=True)):
             (gooA,gooB,d) = e
             j=d['joint']
-            jReacForceV = j.GetReactionForce(30)
-            #print i,jReacForceV
-            #print j.length
-            d =  (j.anchorA-j.anchorB).length
-            if d > md :
-                md = d
-            #if(d>9):
-            #    gooA = j.bodyA.userData
-            #    gooB = j.bodyB.userData
-            #    self.gooGraph.remove_edge(gooA,gooB)
-            #    self.world.DestroyJoint(j)
-            #    break
+
+            if not self.justAddedGooOrJoin:
+                if j.userData.breakJoint():
+                    self.gooGraph.remove_edge(gooA, gooB)
+                    self.world.destroyJoint(j)
+                    break
+
+            if False:
+                jReacForceV = j.getReactionForce(30)
+                j.userData.force = jReacForceV.length
+                f = jReacForceV.length
+                gamma = 0.004
+                normval = 1.0 - numpy.exp(-1.0 * gamma * f)
+                realLength = (j.anchorA -  j.anchorB).length
+                lengthDiff = realLength - j.length
+                if lengthDiff < 0:
+                    j.userData.force = 0.0
+                else:
+                    if not self.justAddedGooOrJoin:
+                        if(normval>0.9):
+                           gooA = j.bodyA.userData
+                           gooB = j.bodyB.userData
+                           self.gooGraph.remove_edge(gooA,gooB)
+                           self.world.destroyJoint(j)
+                           break
+
         #print "maxdist ",md
     def update(self, dt):
-        self.world.Step(dt,5,5)
+        #print "DT",dt
+        self.world.step(float(dt),5,5,5)#
+                        # timeStpep=float(dt),
+                        # velocityIterations=5,
+                        # positionIterations=5,
+                        # particleIterations=5)
+        #print "step done"
     def postUpdate(self, dt):
         for g in self.toDeleteGoos:
             self.removeGoo(g)
@@ -325,7 +358,7 @@ class BaseLevel(object):
     #       localAnchorA=gooA.localAnchor(),
     #       localAnchorB=gooB.localAnchor()
     #    )
-    #    j=self.world.CreateJoint(dfn)
+    #    j=self.world.createJoint(dfn)
     #    if gParam.autoExpanding:
     #        j.length = gParam.expandingDist
     #    self.gooGraph.add_edge(gooA, gooB, joint=j)
